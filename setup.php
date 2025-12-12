@@ -22,7 +22,7 @@ function plugin_version_reservationdetails() {
             ]
         ],
         'description'   => 'Adds contextual fields to the asset reservation form.'
-   ];
+    ];
 }
 
 function plugin_reservationdetails_check_prerequisites() {
@@ -30,6 +30,5 @@ function plugin_reservationdetails_check_prerequisites() {
         echo "This plugin requires GLPI >= 11.0.4";
         return false;
     }
-   return true;
+    return true;
 }
-
