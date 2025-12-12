@@ -18,7 +18,7 @@ function plugin_version_reservationdetails() {
         'requirements'   => [
             'glpi'   => [
                 'min' => '11.0.4',
-                'max' => '11.0.4'
+                'max' => '11.0.5'
             ]
         ],
         'description'   => 'Adds contextual fields to the asset reservation form.'
@@ -26,9 +26,5 @@ function plugin_version_reservationdetails() {
 }
 
 function plugin_reservationdetails_check_prerequisites() {
-    if (version_compare(GLPI_VERSION, '11.0.4', 'lt')) {
-        echo "This plugin requires GLPI >= 11.0.4";
-        return false;
-    }
     return true;
 }
