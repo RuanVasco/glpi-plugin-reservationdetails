@@ -13,7 +13,7 @@ function plugin_version_reservationdetails() {
         'name'           => 'Reservation Details',
         'version'        => PLUGIN_RESERVATIONDETAILS_VERSION,
         'author'         => 'Ruan Vasconcelos',
-        'license'        => 'MIT',
+        'license'        => 'GPLv3+',
         'homepage'       => 'https://github.com/RuanVasco',
         'requirements'   => [
             'glpi'   => [
