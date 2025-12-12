@@ -33,10 +33,10 @@ class Resource extends CommonDropdown {
         $iditemRes = $resourceData['reservationitems_id'];
 
         if ($iditem == $iditemRes) {
-            if ($resourceRepository->isAvailable($resourceData['plugin_fillglpi_resources_id'], $reservationData['begin'], $reservationData['end'])) {
+            if ($resourceRepository->isAvailable($resourceData['plugin_reservationdetails_resources_id'], $reservationData['begin'], $reservationData['end'])) {
                 $resourceRepository->linkResourceToReservation($idResource, $idReservation);
 
-                $resourceTarget = $resourceRepository->findById($resourceData['plugin_fillglpi_resources_id']);
+                $resourceTarget = $resourceRepository->findById($resourceData['plugin_reservationdetails_resources_id']);
 
                 if ($resourceTarget['ticket_entities_id']) {
                     $itemName = $reservationRepository->getReservationItemName($iditemRes);

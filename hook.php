@@ -128,8 +128,8 @@ function reservationdetails_params_hook(array $params) {
 }
 
 
-function plugin_fillglpi_getDropdown() {
+function plugin_reservationdetails_getDropdown() {
     return [
-        Resource::class     => _n('Recurso para Reserva', 'Recursos para Reserva', 2, 'fillglpi')
+        Resource::class     => _n('Recurso para Reserva', 'Recursos para Reserva', 2, 'reservationdetails')
     ];
 }
