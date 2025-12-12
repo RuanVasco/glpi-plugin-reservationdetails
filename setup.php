@@ -1,5 +1,7 @@
 <?php
 
+use GlpiPlugin\Reservationdetails\Entity\Resource;
+
 define('PLUGIN_RESERVATIONDETAILS_VERSION', '0.1.0');
 
 function plugin_init_reservationdetails() {
@@ -27,4 +29,8 @@ function plugin_version_reservationdetails() {
 
 function plugin_reservationdetails_check_prerequisites() {
     return true;
+}
+
+function plugin_reservationdetails_getDropdown() {
+    return [Resource::class => Resource::getTypeName(2)];
 }

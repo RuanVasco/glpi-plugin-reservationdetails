@@ -126,10 +126,3 @@ function reservationdetails_params_hook(array $params) {
         Reservation::addFieldsInReservationForm();
     }
 }
-
-
-function plugin_reservationdetails_getDropdown() {
-    return [
-        Resource::class     => _n('Recurso para Reserva', 'Recursos para Reserva', 2, 'reservationdetails')
-    ];
-}

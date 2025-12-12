@@ -20,6 +20,14 @@ class Resource extends CommonDropdown {
         return 'fas fa-mug-saucer';
     }
 
+    public static function canView(): bool {
+        return true;
+    }
+
+    public static function getTable($classname = null) {
+        return 'glpi_plugin_reservationdetails_resources';
+    }
+
     public static function create($idResource, $idReservation) {
         global $DB;
 
