@@ -88,7 +88,7 @@ function plugin_reservationdetails_uninstall() {
     return true;
 }
 
-function reservationdetails_additem_called(CommonDBTM $item) {
+function plugin_reservationdetails_additem_called(CommonDBTM $item) {
     if ($item::getType() == \Reservation::class) {
         $obj = new Reservation;
         $found = false;
@@ -121,7 +121,7 @@ function reservationdetails_additem_called(CommonDBTM $item) {
     }
 }
 
-function reservationdetails_params_hook(array $params) {
+function plugin_reservationdetails_params_hook(array $params) {
     if (($params['item'] == new \Reservation())) {
         Reservation::addFieldsInReservationForm();
     }

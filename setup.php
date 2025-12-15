@@ -9,6 +9,14 @@ function plugin_init_reservationdetails() {
 
     $PLUGIN_HOOKS['csrf_compliant']['reservationdetails'] = true;
     $PLUGIN_HOOKS['use_massive_action']['fillglpi'] = 1;
+
+    $PLUGIN_HOOKS['item_add']['reservationdetails'] = [
+        'Reservation' => 'plugin_reservationdetails_additem_called'
+    ];
+
+    $PLUGIN_HOOKS['post_item_form']['reservationdetails'] = [
+        'Reservation' => 'plugin_reservationdetails_params_hook'
+    ];
 }
 
 function plugin_version_reservationdetails() {
