@@ -1,5 +1,5 @@
-{% import "components/form/fields_macros.html.twig" as fields %}
-{% import "@reservationdetails/components/macro.html.twig" as macros %}
+{% import "components/form/fields_macros.html.twig" as fields %} 
+{% import "@reservationdetails/components/macro.html.twig" as macros %} 
 
 <form name="asset_form" style="width: 100%;" class="ms-3 d-flex flex-column" method="post" action="{{ itemtype.getFormURL() }}" enctype="multipart/form-data" data-track-changes="true" data-submit-once>  
     <input type="hidden" name="itemtype" value="{{ itemtype.getType() }}" />
@@ -27,12 +27,20 @@
                 <input type="checkbox" id="open_ticket" name="open_ticket" />
                 <label for="open_ticket">Abrir Chamado</label>
                 <div id="box_entities" style="display: none">
-                    {{ macros.selectEntities('ticket_entities_id', current_value.ticket_entities_id) }}
+                    <label for="select_entities" class="form-label mt-2">Selecione o setor alvo</label>
+                        <select name="ticket_entities_id" id="select_entities">
+                            {% for entity in entities %}
+                                <option value="{{ entity.id }}" 
+                                    {% if current_value.ticket_entities_id == entity.id %}selected{% endif %}>
+                                    {{ entity.completename }}
+                                </option>
+                            {% endfor %}
+                        </select>
                 </div>
             </div>            
         </div>             
     </div>
-    
+
     <div class="mt-2">
         {% if id <= 0 %}
             <button class="btn btn-primary me-2" type="submit" name="add">

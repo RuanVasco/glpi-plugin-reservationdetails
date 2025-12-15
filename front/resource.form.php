@@ -1,6 +1,7 @@
 <?php
 
 use GlpiPlugin\Reservationdetails\Entity\Resource;
+use GlpiPlugin\Reservationdetails\Repository\ResourceRepository;
 use Glpi\Event;
 
 include("../../../inc/includes.php");
@@ -16,6 +17,7 @@ if (!$plugin->isInstalled('reservationdetails') || !$plugin->isActivated('reserv
 
 Session::checkLoginUser();
 
+global $DB;
 if (isset($_POST['add'])) {
     if (!isset($_POST['open_ticket'])) {
         unset($_POST['ticket_entities_id']);
@@ -29,14 +31,8 @@ if (isset($_POST['add'])) {
     $newID = $obj->add($_POST);
 
     if ($newID) {
-        foreach ($_POST as $key => $value) {
-            if (strpos($key, 'item_id_') === 0) {
-                $DB->insert('glpi_plugin_reservationdetails_resources_reservationsitems', [
-                    'plugin_reservationdetails_resources_id' => $newID,
-                    'reservationitems_id'                    => $value
-                ]);
-            }
-        }
+        $resourceRepo = new ResourceRepository($DB);
+        $resourceRepo->linkReservationItems($newID, $_POST);
     }
 
     Html::redirect($obj->getLinkURL());
@@ -50,21 +46,11 @@ if (isset($_POST['add'])) {
         $_POST['stock'] = NULL;
     }
 
-    $DB->delete('glpi_plugin_reservationdetails_resources_reservationsitems', [
-        'plugin_reservationdetails_resources_id' => $_POST['id']
-    ]);
-
-    foreach ($_POST as $key => $value) {
-        if (strpos($key, 'item_id_') === 0) {
-            $DB->insert('glpi_plugin_reservationdetails_resources_reservationsitems', [
-                'plugin_reservationdetails_resources_id' => $_POST['id'],
-                'reservationitems_id'                    => $value
-            ]);
-        }
-    }
-
     $obj->check($_POST['id'], UPDATE, $_POST);
     $obj->update($_POST);
+
+    $resourceRepo = new ResourceRepository($DB);
+    $resourceRepo->syncReservationItems($_POST['id'], $_POST);
 
     Html::redirect($obj->getLinkURL());
 } else if (isset($_POST['delete'])) {

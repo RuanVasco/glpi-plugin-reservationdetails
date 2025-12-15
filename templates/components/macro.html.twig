@@ -364,34 +364,6 @@
 
 {% endmacro %}
 
-{% macro selectEntities(name, values) %}
-
-    <label for="select_entities" class="form-label mt-2">Selecione o setor alvo</label>
-    <select name="{{name}}" id="select_entities"></select>
-    
-    <script type="text/javascript">
-        const val = {{values|json_encode|raw}};
-        $(document).ready(() => {          
-            $.get(
-                "{{ path('/plugins/reservationdetails/ajax/entities.php') }}",
-                {getAllEntities: "getAllEntities"},
-                function(response) {
-                    response.forEach((item) => {
-                        let selected = '';
-
-                        if (item.id === val) {
-                            selected = 'selected';
-                        }
-
-                        $("#select_entities").append(`<option value="${item.id}" ${selected}>${item.name}</option>`);
-                    })                    
-                }
-            )
-        })        
-    </script>
-
-{% endmacro %}
-
 {% macro multiSelectByTextInput(name, label, values) %}
     <label for="value_to_add" class="form-label">{{label}}</label>
     <div class="input-group">

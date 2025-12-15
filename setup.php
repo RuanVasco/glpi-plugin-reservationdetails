@@ -8,6 +8,7 @@ function plugin_init_reservationdetails() {
     global $PLUGIN_HOOKS;
 
     $PLUGIN_HOOKS['csrf_compliant']['reservationdetails'] = true;
+    $PLUGIN_HOOKS['use_massive_action']['fillglpi'] = 1;
 }
 
 function plugin_version_reservationdetails() {

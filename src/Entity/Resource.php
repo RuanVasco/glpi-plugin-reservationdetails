@@ -36,6 +36,16 @@ class Resource extends CommonDropdown {
         return true;
     }
 
+    public static function canPurge(): bool {
+        return true;
+    }
+
+    static function getFormURL($full = true) {
+        $pluginUrl = \Plugin::getWebDir('reservationdetails', $full);
+
+        return $pluginUrl . '/front/resource.form.php';
+    }
+
     public static function getTable($classname = null) {
         return 'glpi_plugin_reservationdetails_resources';
     }
@@ -140,7 +150,8 @@ class Resource extends CommonDropdown {
         $resourceRepository = new ResourceRepository($DB);
         $reservationRepository = new ReservationRepository($DB);
 
-        $resourceResults = $resourceRepository->findByID($ID);
+        $entity = new \Entity();
+        $entities = $entity->find([], ['completename']);
 
         $resourcesReservationItems = $DB->request([
             'FROM'       => 'glpi_reservationitems',
@@ -187,13 +198,13 @@ class Resource extends CommonDropdown {
             ];
         }
 
-        foreach ($resourceResults as $result) {
-
+        if ($ID > 0) {
+            $resource = $resourceRepository->findByID($ID);
             $resource = [
-                'name'                         =>  $result['name'],
-                'stock'                        =>  $result['stock'],
-                'type'                         =>  $result['type'],
-                'ticket_entities_id'           =>  $result['ticket_entities_id']
+                'name'                         =>  $resource->fields['name'],
+                'stock'                        =>  $resource->fields['stock'],
+                'type'                         =>  $resource->fields['type'],
+                'ticket_entities_id'           =>  $resource->fields['ticket_entities_id']
             ];
         }
 
@@ -204,7 +215,9 @@ class Resource extends CommonDropdown {
                 'id'            =>  $ID,
                 'current_value' =>  $resource,
                 'items_value'   =>  $items,
-                'current_items' =>  $actualItems
+                'current_items' =>  $actualItems,
+                'entities'      =>  $entities,
+                'itemtype'      => $this
             ]
         );
 

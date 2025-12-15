@@ -92,4 +92,23 @@ class ResourceRepository {
 
         return (bool) $result;
     }
+
+    public function linkReservationItems(int $resourceId, array $input): void {
+        foreach ($input as $key => $value) {
+            if (strpos($key, 'item_id_') === 0) {
+                $this->db->insert('glpi_plugin_reservationdetails_resources_reservationsitems', [
+                    'plugin_reservationdetails_resources_id' => $resourceId,
+                    'reservationitems_id'                    => (int) $value
+                ]);
+            }
+        }
+    }
+
+    public function syncReservationItems(int $resourceId, array $input): void {
+        $this->db->delete('glpi_plugin_reservationdetails_resources_reservationsitems', [
+            'plugin_reservationdetails_resources_id' => $resourceId
+        ]);
+
+        $this->linkReservationItems($resourceId, $input);
+    }
 }
