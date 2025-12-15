@@ -24,8 +24,64 @@ class Resource extends CommonDropdown {
         return true;
     }
 
+    public static function canCreate(): bool {
+        return true;
+    }
+
+    public static function canUpdate(): bool {
+        return true;
+    }
+
+    public static function canDelete(): bool {
+        return true;
+    }
+
     public static function getTable($classname = null) {
         return 'glpi_plugin_reservationdetails_resources';
+    }
+
+    public function rawSearchOptions() {
+        $table = self::getTable();
+
+        $tab = [];
+
+        $tab[] = [
+            'id'                 => '2',
+            'table'              => $table,
+            'field'              => 'name',
+            'name'               => __('Name'),
+            'datatype'           => 'itemlink',
+            'massiveaction'      => true,
+            'itemtype'           => self::class
+        ];
+
+        $tab[] = [
+            'id'                 => '3',
+            'table'              => $table,
+            'field'              => 'stock',
+            'name'               => __('Stock'),
+            'datatype'           => 'number',
+            'massiveaction'      => true
+        ];
+
+        return $tab;
+    }
+
+    public function getAll() {
+        global $DB;
+        $response = [];
+
+        $resourceRepository  = new ResourceRepository($DB);
+        $results = $resourceRepository->findAll();
+
+        foreach ($results as $result) {
+            $response[] = [
+                'id'    =>  $result['id'],
+                'name'  =>  $result['name']
+            ];
+        }
+
+        return $response;
     }
 
     public static function create($idResource, $idReservation) {
@@ -73,5 +129,85 @@ class Resource extends CommonDropdown {
         }
 
         return false;
+    }
+
+    public function showForm($ID, array $options = []) {
+        global $DB;
+        $resource = [];
+        $items = [];
+        $actualItems = [];
+
+        $resourceRepository = new ResourceRepository($DB);
+        $reservationRepository = new ReservationRepository($DB);
+
+        $resourceResults = $resourceRepository->findByID($ID);
+
+        $resourcesReservationItems = $DB->request([
+            'FROM'       => 'glpi_reservationitems',
+            'INNER JOIN' => [
+                'glpi_plugin_reservationdetails_resources_reservationsitems' => [
+                    'ON' => [
+                        'glpi_plugin_reservationdetails_resources_reservationsitems' => 'reservationitems_id',
+                        'glpi_reservationitems'                                      => 'id'
+                    ]
+                ]
+            ],
+            'WHERE'      => [
+                'glpi_plugin_reservationdetails_resources_reservationsitems.plugin_reservationdetails_resources_id' => $ID
+            ]
+        ]);
+
+        $items = [];
+        $reservationItems = $reservationRepository->getAllItems();
+        foreach ($reservationItems as $reservationItem) {
+
+            $type = $reservationItem['itemtype'];
+            $id   = $reservationItem['items_id'];
+
+            if ($type && class_exists($type)) {
+                /** @var \CommonDBTM $realItem */
+                $realItem = new $type();
+
+                if ($realItem->getFromDB($id)) {
+
+                    $items[] = [
+                        'id'           => $reservationItem['id'],
+                        'itemtype'     => $type,
+                        'itemTypeName' => $realItem->getName(),
+                        'itemTypeId'   => $id
+                    ];
+                }
+            }
+        }
+
+        foreach ($resourcesReservationItems as $i) {
+            $actualItems[] = [
+                'id'    => $i['reservationitems_id'],
+                'name'  => $reservationRepository->getItemName($i['itemtype'], $i['items_id'])
+            ];
+        }
+
+        foreach ($resourceResults as $result) {
+
+            $resource = [
+                'name'                         =>  $result['name'],
+                'stock'                        =>  $result['stock'],
+                'type'                         =>  $result['type'],
+                'ticket_entities_id'           =>  $result['ticket_entities_id']
+            ];
+        }
+
+        $loader = new TemplateRenderer();
+        $loader->display(
+            '@reservationdetails/resource_form.html.twig',
+            [
+                'id'            =>  $ID,
+                'current_value' =>  $resource,
+                'items_value'   =>  $items,
+                'current_items' =>  $actualItems
+            ]
+        );
+
+        return true;
     }
 }

@@ -39,4 +39,15 @@ class ReservationRepository {
 
         return Dropdown::getDropdownName($table, $data['items_id']);
     }
+
+    public function getItemName(string $itemtype, int $items_id): string {
+        $table = getTableForItemType($itemtype);
+        return \Dropdown::getDropdownName($table, $items_id) ?? '';
+    }
+
+    public function getAllItems(): array {
+        $item = new \ReservationItem();
+
+        return $item->find(['is_active' => 1]);
+    }
 }

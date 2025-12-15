@@ -22,6 +22,19 @@ class ResourceRepository {
         return null;
     }
 
+    public function findAll(): \Generator {
+        $table = Resource::getTable();
+
+        $iterator = $this->db->request(['FROM' => $table]);
+
+        foreach ($iterator as $row) {
+            $resource = new Resource();
+
+            $resource->fields = $row;
+            yield $resource;
+        }
+    }
+
     public function isAvailable(int $resourceId, string $dateStart, string $dateEnd): bool {
         $resource = $this->findById($resourceId);
 
