@@ -3,8 +3,8 @@
 namespace GlpiPlugin\Reservationdetails\Repository;
 
 use GlpiPlugin\Reservationdetails\Entity\Reservation;
-use DB;
-use Dropdown;
+use \DB;
+use \ReservationItem;
 
 class ReservationRepository {
 
@@ -13,7 +13,7 @@ class ReservationRepository {
     ) {
     }
 
-    public function findById($id): ?Reservation {
+    public function findById(int $id): ?Reservation {
         $resource = new Reservation();
 
         if ($resource->getFromDB($id)) {
@@ -23,30 +23,41 @@ class ReservationRepository {
         return null;
     }
 
-    public function getReservationItemName(int $reservationItemId): string {
-        $iterator = $this->db->request([
-            'SELECT' => ['itemtype', 'items_id'],
-            'FROM'   => 'glpi_reservationitems',
-            'WHERE'  => ['id' => $reservationItemId]
-        ]);
+    public function findStandardById(int $id): ?\Reservation {
+        $reservation = new \Reservation();
 
-        if (count($iterator) === 0) {
+        if ($reservation->getFromDB($id)) {
+            return $reservation;
+        }
+
+        return null;
+    }
+
+    public function getReservationItemName(int $reservationItemId): string {
+        $resItem = new ReservationItem();
+
+        if (!$resItem->getFromDB($reservationItemId)) {
             return "";
         }
 
-        $data = $iterator->current();
-        $table = getTableForItemType($data['itemtype']);
-
-        return Dropdown::getDropdownName($table, $data['items_id']);
+        return $this->getItemName(
+            $resItem->fields['itemtype'],
+            $resItem->fields['items_id']
+        );
     }
 
-    public function getItemName(string $itemtype, int $items_id): string {
-        $table = getTableForItemType($itemtype);
-        return \Dropdown::getDropdownName($table, $items_id) ?? '';
+    public function getItemName(string $itemtype, int $itemsId): string {
+        if (!class_exists($itemtype)) {
+            return '';
+        }
+
+        $table = $itemtype::getTable();
+
+        return \Dropdown::getDropdownName($table, $itemsId) ?? '';
     }
 
-    public function getAllItems(): array {
-        $item = new \ReservationItem();
+    public function getAllActiveItems(): array {
+        $item = new ReservationItem();
 
         return $item->find(['is_active' => 1]);
     }

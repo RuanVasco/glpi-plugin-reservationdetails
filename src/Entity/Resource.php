@@ -41,9 +41,13 @@ class Resource extends CommonDropdown {
     }
 
     static function getFormURL($full = true) {
-        $pluginUrl = \Plugin::getWebDir('reservationdetails', $full);
+        global $CFG_GLPI;
 
-        return $pluginUrl . '/front/resource.form.php';
+        if ($full) {
+            return $CFG_GLPI['url_base'] . "/plugins/reservationdetails/front/resource.form.php";
+        }
+
+        return $CFG_GLPI['root_doc'] . "/plugins/reservationdetails/front/resource.form.php";
     }
 
     public static function getTable($classname = null) {
@@ -169,7 +173,7 @@ class Resource extends CommonDropdown {
         ]);
 
         $items = [];
-        $reservationItems = $reservationRepository->getAllItems();
+        $reservationItems = $reservationRepository->getAllActiveItems();
         foreach ($reservationItems as $reservationItem) {
 
             $type = $reservationItem['itemtype'];
