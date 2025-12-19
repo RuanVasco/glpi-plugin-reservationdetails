@@ -86,9 +86,35 @@ class Reservation extends CommonDBTM {
     }
 
     public static function addFieldsInReservationForm() {
+        global $DB;
+
+        // Get the reservation item ID from POST or GET
+        $reservationItemId = null;
+        if (isset($_POST['items']) && is_array($_POST['items']) && !empty($_POST['items'])) {
+            $reservationItemId = reset($_POST['items']);
+        } elseif (isset($_GET['item']) && is_array($_GET['item'])) {
+            $reservationItemId = reset(array_keys($_GET['item']));
+        }
+
+        if (!$reservationItemId) {
+            return true;
+        }
+
+        $resourceRepo = new ResourceRepository($DB);
+        
+        // Get resources linked to this reservation item (without availability check for form)
+        $resources = $resourceRepo->findResourcesForItem($reservationItemId);
+
+        if (empty($resources)) {
+            return true;
+        }
+
+        $loader = new TemplateRenderer();
+        $loader->display('@reservationdetails/reservation_resources_inline.html.twig', [
+            'resources' => $resources
+        ]);
+
         return true;
-        // $loader = new TemplateRenderer();
-        // $loader->display('@reservationdetails/reserve_item_form.html.twig');
     }
 
     public static function getRootReservation($id) {

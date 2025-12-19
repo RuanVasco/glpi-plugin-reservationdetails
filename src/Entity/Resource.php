@@ -112,7 +112,7 @@ class Resource extends CommonDropdown {
         return $response;
     }
 
-    public static function create(int $idResource, int $idReservation): bool {
+    public static function create(int $idResource, int $idReservation, bool $silentOnConflict = false): bool {
         global $DB;
 
         $resourceRepository    = new ResourceRepository($DB);
@@ -147,11 +147,13 @@ class Resource extends CommonDropdown {
         ])->current();
 
         if ($linkCheck['c'] == 0) {
-            \Session::addMessageAfterRedirect(
-                __('Este recurso não está disponível para este item de reserva.'),
-                false,
-                ERROR
-            );
+            if (!$silentOnConflict) {
+                \Session::addMessageAfterRedirect(
+                    __('Este recurso não está disponível para este item de reserva.'),
+                    false,
+                    ERROR
+                );
+            }
             return false;
         }
 
@@ -184,10 +186,18 @@ class Resource extends CommonDropdown {
 
             return true;
         } else {
+            // Use WARNING for bulk reservations, ERROR for single
+            $messageType = $silentOnConflict ? WARNING : ERROR;
+            $dateFormatted = date('d/m/Y H:i', strtotime($reservationBegin));
+            
             \Session::addMessageAfterRedirect(
-                __('Recurso não disponível para o horário selecionado (Estoque esgotado).'),
+                sprintf(
+                    __("Recurso '%s' indisponível para %s (estoque esgotado)."),
+                    $resourceData['name'],
+                    $dateFormatted
+                ),
                 false,
-                ERROR
+                $messageType
             );
         }
 

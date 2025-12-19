@@ -139,6 +139,44 @@ class ResourceRepository {
         $this->linkReservationItems($resourceId, $input);
     }
 
+    /**
+     * Find all resources linked to a reservation item (for form display)
+     */
+    public function findResourcesForItem(int $reservationItemId): array {
+        $resources = [];
+
+        $iterator = $this->db->request([
+            'SELECT' => [
+                'r.id',
+                'r.name',
+                'r.stock'
+            ],
+            'FROM'   => 'glpi_plugin_reservationdetails_resources AS r',
+            'INNER JOIN' => [
+                'glpi_plugin_reservationdetails_resources_reservationsitems AS link' => [
+                    'ON' => [
+                        'link' => 'plugin_reservationdetails_resources_id',
+                        'r'    => 'id'
+                    ]
+                ]
+            ],
+            'WHERE'  => [
+                'link.reservationitems_id' => $reservationItemId
+            ],
+            'ORDER'  => 'r.name'
+        ]);
+
+        foreach ($iterator as $row) {
+            $resources[] = [
+                'id'    => $row['id'],
+                'name'  => $row['name'],
+                'stock' => $row['stock']
+            ];
+        }
+
+        return $resources;
+    }
+
     public function getOccupiedResourceIds(string $start, string $end): array {
 
         $iterator = $this->db->request([

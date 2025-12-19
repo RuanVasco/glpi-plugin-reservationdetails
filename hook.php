@@ -107,23 +107,38 @@ function plugin_reservationdetails_additem_called(CommonDBTM $item) {
             }
         }
 
+        // Check if this is a bulk/recurring reservation
+        // Bulk reservations have periodicity[type] set to something other than empty
+        $isBulk = false;
+        if (isset($_POST['periodicity']) && is_array($_POST['periodicity'])) {
+            $isBulk = !empty($_POST['periodicity']['type']);
+        }
+
         if (!$found) {
-            Html::redirect($obj->getFormURLWithID($item->getID()));
+            // No resources selected - redirect to resource form
+            // But skip redirect for bulk reservations to not break the flow
+            if (!$isBulk) {
+                Html::redirect($obj->getFormURLWithID($item->getID()));
+            }
         } else {
+            // Resources were selected
             $_POST['reservations_id'] = $item->fields['id'];
 
             foreach ($_POST as $i => $key) {
                 if (strpos($i, 'resource_id_') !== false) {
                     $parts = explode('_', $i);
-
                     $resourceID = $parts[2];
-
-                    Resource::create($resourceID, $_POST['reservations_id']);
+                    
+                    // For bulk reservations, use silent mode (warnings instead of errors)
+                    Resource::create($resourceID, $_POST['reservations_id'], $isBulk);
                 }
             }
 
-            $obj->check(-1, CREATE, $_POST);
-            $obj->add($_POST);
+            // Only add plugin reservation record for single reservations
+            if (!$isBulk) {
+                $obj->check(-1, CREATE, $_POST);
+                $obj->add($_POST);
+            }
         }
     }
 }
