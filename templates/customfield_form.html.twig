@@ -1,0 +1,137 @@
+{% import "components/form/fields_macros.html.twig" as fields %}
+
+<form name="customfield_form" method="post" action="{{ item.getFormURL() }}" enctype="multipart/form-data" data-track-changes="true" data-submit-once>
+
+    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" name="id" value="{{ item.fields.id ?? 0 }}" />
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-list-alt me-2"></i>
+                {{ item.getTypeName(1) }}
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    {{ fields.dropdownArrayField(
+                        'itemtype',
+                        item.fields.itemtype ?? '',
+                        itemtypes,
+                        __('Item Type'),
+                        {
+                            'display_emptychoice': true,
+                            'required': true
+                        }
+                    ) }}
+                </div>
+                <div class="col-md-6">
+                    {{ fields.textField(
+                        'field_name',
+                        item.fields.field_name ?? '',
+                        __('Field Name (internal)'),
+                        {
+                            'required': true,
+                            'helper': 'Use lowercase with underscores, e.g.: people_quantity'
+                        }
+                    ) }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    {{ fields.textField(
+                        'field_label',
+                        item.fields.field_label ?? '',
+                        __('Label (display)'),
+                        {
+                            'required': true
+                        }
+                    ) }}
+                </div>
+                <div class="col-md-6">
+                    {{ fields.dropdownArrayField(
+                        'field_type',
+                        item.fields.field_type ?? 'text',
+                        {
+                            'text': 'Text',
+                            'number': 'Number',
+                            'textarea': 'Text Area',
+                            'dropdown': 'Dropdown'
+                        },
+                        __('Field Type'),
+                        {}
+                    ) }}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    {{ fields.dropdownYesNo(
+                        'is_mandatory',
+                        item.fields.is_mandatory ?? 0,
+                        __('Mandatory')
+                    ) }}
+                </div>
+                <div class="col-md-6">
+                    {{ fields.numberField(
+                        'field_order',
+                        item.fields.field_order ?? 0,
+                        __('Order'),
+                        {
+                            'min': 0
+                        }
+                    ) }}
+                </div>
+            </div>
+
+            <div class="row" id="dropdown_values_row">
+                <div class="col-12">
+                    {{ fields.textareaField(
+                        'dropdown_values',
+                        item.fields.dropdown_values ?? '',
+                        __('Dropdown Values'),
+                        {
+                            'helper': 'One value per line (only for dropdown type)',
+                            'rows': 5
+                        }
+                    ) }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex justify-content-end">
+        {% if item.fields.id > 0 %}
+            <button type="submit" name="update" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i>
+                {{ __('Save') }}
+            </button>
+            <button type="submit" name="purge" class="btn btn-danger ms-2">
+                <i class="fas fa-trash me-1"></i>
+                {{ __('Delete') }}
+            </button>
+        {% else %}
+            <button type="submit" name="add" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                {{ __('Add') }}
+            </button>
+        {% endif %}
+    </div>
+</form>
+
+<script>
+$(document).ready(function() {
+    function toggleDropdownValues() {
+        if ($('select[name="field_type"]').val() === 'dropdown') {
+            $('#dropdown_values_row').show();
+        } else {
+            $('#dropdown_values_row').hide();
+        }
+    }
+    
+    toggleDropdownValues();
+    $('select[name="field_type"]').on('change', toggleDropdownValues);
+});
+</script>

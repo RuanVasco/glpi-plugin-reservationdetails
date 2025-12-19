@@ -2,6 +2,7 @@
 
 use GlpiPlugin\Reservationdetails\Entity\Reservation;
 use GlpiPlugin\Reservationdetails\Entity\Resource;
+use GlpiPlugin\Reservationdetails\Entity\CustomFieldValue;
 
 include("../../../inc/includes.php");
 
@@ -22,6 +23,7 @@ if (isset($_POST['add'])) {
     $obj->check(-1, CREATE, $_POST);
     $obj->add($_POST);
 
+    // Process resources
     foreach ($_POST as $i => $key) {
         if (strpos($i, 'resource_id_') !== false) {
             if (!Resource::create($key, $_POST['reservations_id'])) {
@@ -32,6 +34,21 @@ if (isset($_POST['add'])) {
                 );
             }
         }
+    }
+
+    // Save custom field values
+    $customFieldValues = [];
+    foreach ($_POST as $key => $value) {
+        if (strpos($key, 'customfield_') === 0) {
+            $fieldId = (int) str_replace('customfield_', '', $key);
+            if ($fieldId > 0 && !empty($value)) {
+                $customFieldValues[$fieldId] = $value;
+            }
+        }
+    }
+    
+    if (!empty($customFieldValues)) {
+        CustomFieldValue::saveForReservation($_GET['id'], $customFieldValues);
     }
 
     $ri = new \ReservationItem();

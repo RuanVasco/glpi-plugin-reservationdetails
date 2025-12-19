@@ -45,6 +45,18 @@ class Profile extends CommonGLPI {
                     READ    => __('Read'),
                     CREATE  => __('Create')
                 ]
+            ],
+            [
+                'itemtype'  => CustomField::class,
+                'label'     => CustomField::getTypeName(2),
+                'field'     => CustomField::$rightname,
+                'rights'    => [
+                    READ    => __('Read'),
+                    UPDATE  => __('Update'),
+                    CREATE  => __('Create'),
+                    DELETE  => __('Delete'),
+                    PURGE   => __('Delete permanently')
+                ]
             ]
         ];
     }

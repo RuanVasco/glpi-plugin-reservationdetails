@@ -66,6 +66,42 @@ function plugin_reservationdetails_install() {
         $DB->doQueryOrDie($query, $DB->error());
     }
 
+    // Custom Fields - Field definitions per itemtype
+    if (!$DB->tableExists('glpi_plugin_reservationdetails_customfields')) {
+        $query = "CREATE TABLE `glpi_plugin_reservationdetails_customfields` (
+                    `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `itemtype` VARCHAR(100) NOT NULL,
+                    `field_name` VARCHAR(100) NOT NULL,
+                    `field_label` VARCHAR(255) NOT NULL,
+                    `field_type` ENUM('text', 'number', 'textarea', 'dropdown') DEFAULT 'text',
+                    `is_mandatory` TINYINT(1) DEFAULT 0,
+                    `dropdown_values` TEXT,
+                    `field_order` INT(11) DEFAULT 0,
+                    PRIMARY KEY (`id`),
+                    KEY `itemtype` (`itemtype`)
+                  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
+        $DB->doQueryOrDie($query, $DB->error());
+    }
+
+    // Custom Fields - Values per reservation
+    if (!$DB->tableExists('glpi_plugin_reservationdetails_customfields_values')) {
+        $query = "CREATE TABLE `glpi_plugin_reservationdetails_customfields_values` (
+                    `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `customfields_id` INT(11) UNSIGNED NOT NULL,
+                    `reservations_id` INT(11) UNSIGNED NOT NULL,
+                    `value` TEXT,
+                    PRIMARY KEY (`id`),
+                    KEY `customfields_id` (`customfields_id`),
+                    KEY `reservations_id` (`reservations_id`),
+                    UNIQUE KEY `field_reservation` (`customfields_id`, `reservations_id`),
+                    CONSTRAINT `fk_customfields`
+                        FOREIGN KEY (`customfields_id`)
+                        REFERENCES `glpi_plugin_reservationdetails_customfields` (`id`)
+                        ON DELETE CASCADE
+                  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
+        $DB->doQueryOrDie($query, $DB->error());
+    }
+
     // Install profile rights
     Profile::installRights();
 
@@ -77,6 +113,8 @@ function plugin_reservationdetails_uninstall() {
     global $DB;
 
     $tables = [
+        'glpi_plugin_reservationdetails_customfields_values',
+        'glpi_plugin_reservationdetails_customfields',
         'glpi_plugin_reservationdetails_reservations_resources',
         'glpi_plugin_reservationdetails_resources_reservationsitems',
         'glpi_plugin_reservationdetails_reservations',

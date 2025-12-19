@@ -64,7 +64,10 @@ class Reservation extends CommonDBTM {
 
         $resources = $resourceRepo->findAvailableResources($reservationItemId, $rawBegin, $rawEnd);
 
-        if (count($resources) <= 0) {
+        // Get custom fields for this item type
+        $customFields = CustomField::getFieldsForItemType($itemType);
+
+        if (count($resources) <= 0 && count($customFields) <= 0) {
             $res = new \Reservation();
             Html::redirect($res->getFormURLWithID($nativeReservation->getID()));
         }
@@ -79,7 +82,8 @@ class Reservation extends CommonDBTM {
         $loader->display('@reservationdetails/form_recourse_after_add.html.twig', [
             'reservationData'   =>  $nativeReservation->fields,
             'resources'         =>  $resources,
-            'itemtype'          =>  $itemType
+            'itemtype'          =>  $itemType,
+            'customFields'      =>  $customFields
         ]);
 
         return true;

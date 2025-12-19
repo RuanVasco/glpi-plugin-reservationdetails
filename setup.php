@@ -3,6 +3,7 @@
 use GlpiPlugin\Reservationdetails\Entity\Resource;
 use GlpiPlugin\Reservationdetails\Entity\Profile;
 use GlpiPlugin\Reservationdetails\Entity\ReservationView;
+use GlpiPlugin\Reservationdetails\Entity\CustomField;
 
 define('PLUGIN_RESERVATIONDETAILS_VERSION', '0.1.0');
 
@@ -52,7 +53,10 @@ function plugin_reservationdetails_check_prerequisites() {
 }
 
 function plugin_reservationdetails_getDropdown() {
-    return [Resource::class => Resource::getTypeName(2)];
+    return [
+        'GlpiPlugin\Reservationdetails\Entity\Resource' => 'Reservation Details > ' . Resource::getTypeName(2),
+        'GlpiPlugin\Reservationdetails\Entity\CustomField' => 'Reservation Details > ' . CustomField::getTypeName(2)
+    ];
 }
 
 function plugin_reservationdetails_changeprofile() {

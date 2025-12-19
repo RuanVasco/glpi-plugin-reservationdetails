@@ -27,17 +27,56 @@
                 </table>
             </td>
         </tr>
-        {% if itemtype == 'PluginGenericobjectSala' %}
-            <tr id="tr_quantity">
-                <td>Quantidade de Pessoas: </td>        
-                <td>
-                    {{ fields.dropdownNumberField(
-                        'people_quantity',
-                        '1',
-                        ''
-                    ) }}
-                </td>   
-            </tr>
+        
+        {# Dynamic Custom Fields #}
+        {% if customFields is defined and customFields|length > 0 %}
+            {% for field in customFields %}
+                <tr>
+                    <td>
+                        {{ field.field_label }}
+                        {% if field.is_mandatory %}
+                            <span class="text-danger">*</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if field.field_type == 'text' %}
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="customfield_{{ field.id }}" 
+                                   id="customfield_{{ field.id }}"
+                                   {{ field.is_mandatory ? 'required' : '' }} />
+                        {% elseif field.field_type == 'number' %}
+                            <input type="number" 
+                                   class="form-control" 
+                                   name="customfield_{{ field.id }}" 
+                                   id="customfield_{{ field.id }}"
+                                   min="0"
+                                   {{ field.is_mandatory ? 'required' : '' }} />
+                        {% elseif field.field_type == 'textarea' %}
+                            <textarea class="form-control" 
+                                      name="customfield_{{ field.id }}" 
+                                      id="customfield_{{ field.id }}"
+                                      rows="3"
+                                      {{ field.is_mandatory ? 'required' : '' }}></textarea>
+                        {% elseif field.field_type == 'dropdown' %}
+                            <select class="form-select" 
+                                    name="customfield_{{ field.id }}" 
+                                    id="customfield_{{ field.id }}"
+                                    {{ field.is_mandatory ? 'required' : '' }}>
+                                <option value="">-- Selecione --</option>
+                                {% if field.dropdown_values %}
+                                    {% for value in field.dropdown_values|split("\n") %}
+                                        {% set value = value|trim %}
+                                        {% if value %}
+                                            <option value="{{ value }}">{{ value }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
         {% endif %}
     </table>
     <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}" />
