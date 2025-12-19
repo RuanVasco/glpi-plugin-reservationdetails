@@ -20,6 +20,10 @@ class Resource extends CommonDropdown {
         return 'fas fa-mug-saucer';
     }
 
+    public static function getMenuName() {
+        return _n('Resource', 'Resources', 2);
+    }
+
     public static function canView(): bool {
         return true;
     }
@@ -48,6 +52,16 @@ class Resource extends CommonDropdown {
         }
 
         return $CFG_GLPI['root_doc'] . "/plugins/reservationdetails/front/resource.form.php";
+    }
+
+    static function getSearchURL($full = true) {
+        global $CFG_GLPI;
+
+        if ($full) {
+            return $CFG_GLPI['url_base'] . "/plugins/reservationdetails/front/resource.php";
+        }
+
+        return $CFG_GLPI['root_doc'] . "/plugins/reservationdetails/front/resource.php";
     }
 
     public static function getTable($classname = null) {
@@ -98,48 +112,83 @@ class Resource extends CommonDropdown {
         return $response;
     }
 
-    public static function create($idResource, $idReservation) {
+    public static function create(int $idResource, int $idReservation): bool {
         global $DB;
 
-        $resourceRepository  = new ResourceRepository($DB);
+        $resourceRepository    = new ResourceRepository($DB);
         $reservationRepository = new ReservationRepository($DB);
 
-        $reservationData = $reservationRepository->findById($idReservation);
-        $resourceData = $resourceRepository->findById($idResource);
+        $reservationObj = $reservationRepository->findStandardById($idReservation);
 
-        $iditem = $reservationData['reservationitems_id'];
-        $iditemRes = $resourceData['reservationitems_id'];
+        if (!$reservationObj) {
+            return false;
+        }
 
-        if ($iditem == $iditemRes) {
-            if ($resourceRepository->isAvailable($resourceData['plugin_reservationdetails_resources_id'], $reservationData['begin'], $reservationData['end'])) {
-                $resourceRepository->linkResourceToReservation($idResource, $idReservation);
+        $reservationBegin  = $reservationObj->fields['begin'];
+        $reservationEnd    = $reservationObj->fields['end'];
+        $reservationRoomId = $reservationObj->fields['reservationitems_id'];
 
-                $resourceTarget = $resourceRepository->findById($resourceData['plugin_reservationdetails_resources_id']);
+        $resourceData = $DB->request([
+            'FROM'  => 'glpi_plugin_reservationdetails_resources',
+            'WHERE' => ['id' => $idResource]
+        ])->current();
 
-                if ($resourceTarget['ticket_entities_id']) {
-                    $itemName = $reservationRepository->getReservationItemName($iditemRes);
-                    $ticket = [
-                        'entities_id'       =>  $resourceTarget['ticket_entities_id'],
-                        'name'              =>  'Reserva para ' . $resourceTarget['name'],
-                        'content'           =>  'Reserva para o ' . $resourceTarget['name'] . ' na data ' . $reservationData['begin'] . '\n' . $itemName,
-                        'date'              =>  date('Y-m-d h:i:s', time()),
-                        'requesttypes_id'   =>  1,
-                        'status'            =>  1
-                    ];
+        if (!$resourceData) {
+            return false;
+        }
 
-                    $track = new \Ticket();
-                    //$track->check(-1, CREATE, $ticket);
-                    $track->add($ticket);
-                }
+        $linkCheck = $DB->request([
+            'COUNT' => 'c',
+            'FROM'  => 'glpi_plugin_reservationdetails_resources_reservationsitems',
+            'WHERE' => [
+                'plugin_reservationdetails_resources_id' => $idResource,
+                'reservationitems_id'                    => $reservationRoomId
+            ]
+        ])->current();
 
-                return true;
-            } else {
-                Session::addMessageAfterRedirect(
-                    __('Recurso não disponível'),
-                    false,
-                    ERROR
-                );
+        if ($linkCheck['c'] == 0) {
+            \Session::addMessageAfterRedirect(
+                __('Este recurso não está disponível para este item de reserva.'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        $isAvailable = $resourceRepository->getAvailabilityResource($idResource, $reservationBegin, $reservationEnd);
+
+        if ($isAvailable) {
+
+            $resourceRepository->linkResourceToReservation($idResource, $reservationRoomId, $idReservation);
+            if (!empty($resourceData['ticket_entities_id'])) {
+
+                $roomName = $reservationRepository->getReservationItemName($reservationRoomId);
+
+                $ticket = [
+                    'entities_id'     => $resourceData['ticket_entities_id'],
+                    'name'            => 'Reserva de Recurso: ' . $resourceData['name'],
+                    'content'         => sprintf(
+                        "Reserva solicitada para o recurso: %s\nData: %s\nLocal: %s",
+                        $resourceData['name'],
+                        $reservationBegin,
+                        $roomName
+                    ),
+                    'date'            => date('Y-m-d H:i:s'),
+                    'requesttypes_id' => 1,
+                    'status'          => 1
+                ];
+
+                $track = new \Ticket();
+                $track->add($ticket);
             }
+
+            return true;
+        } else {
+            \Session::addMessageAfterRedirect(
+                __('Recurso não disponível para o horário selecionado (Estoque esgotado).'),
+                false,
+                ERROR
+            );
         }
 
         return false;

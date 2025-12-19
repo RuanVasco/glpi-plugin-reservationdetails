@@ -75,8 +75,19 @@ if (isset($_POST['add'])) {
     $withtemplate = (isset($_GET['withtemplate']) ? $_GET['withtemplate'] : "");
     $id = isset($_GET['id']) ? $_GET['id'] : -1;
 
-    Resource::displayFullPageForItem($id, null, [
+    Html::header(
+        Resource::getTypeName(1),
+        $_SERVER['PHP_SELF'],
+        'config',
+        'commondropdown',
+        Resource::class
+    );
+
+    $obj->display([
+        'id'           => $id,
         'withtemplate' => $withtemplate,
         'formoptions'  => "data-track-changes=true",
     ]);
+
+    Html::footer();
 }

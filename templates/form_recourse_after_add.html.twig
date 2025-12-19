@@ -62,7 +62,6 @@
 </div>
 
 <script>
-    console.log({{ resources|json_encode|raw }})
     function getRecoursesAvailability(resourceID) {
         $.get("{{ path('/plugins/reservationdetails/ajax/resources.php') }}", {resourceCalendarID: resourceID}, function(response) {
             $("#calendar").empty();     

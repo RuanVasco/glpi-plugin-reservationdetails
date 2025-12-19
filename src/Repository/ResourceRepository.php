@@ -81,12 +81,39 @@ class ResourceRepository {
         return $usageCount < $stockTotal;
     }
 
-    public function linkResourceToReservation(int $resourceItemId, int $reservationId): bool {
+    public function linkResourceToReservation(int $resourceId, int $reservationItemId, int $glpiReservationId): bool {
+        // Busca o ID correto na tabela de vínculo resource-reservationitem
+        $linkRecord = $this->db->request([
+            'SELECT' => 'id',
+            'FROM'   => 'glpi_plugin_reservationdetails_resources_reservationsitems',
+            'WHERE'  => [
+                'plugin_reservationdetails_resources_id' => $resourceId,
+                'reservationitems_id'                    => $reservationItemId
+            ]
+        ])->current();
+
+        if (!$linkRecord) {
+            return false;
+        }
+
+        // Busca o ID do plugin reservation a partir do ID da reserva GLPI nativa
+        $pluginReservation = $this->db->request([
+            'SELECT' => 'id',
+            'FROM'   => 'glpi_plugin_reservationdetails_reservations',
+            'WHERE'  => [
+                'reservations_id' => $glpiReservationId
+            ]
+        ])->current();
+
+        if (!$pluginReservation) {
+            return false;
+        }
+
         $result = $this->db->insert(
             'glpi_plugin_reservationdetails_reservations_resources',
             [
-                'plugin_reservationdetails_resources_reservationsitems_id' => $resourceItemId,
-                'plugin_reservationdetails_reservations_id'                => $reservationId
+                'plugin_reservationdetails_resources_reservationsitems_id' => $linkRecord['id'],
+                'plugin_reservationdetails_reservations_id'                => $pluginReservation['id']
             ]
         );
 
@@ -152,9 +179,8 @@ class ResourceRepository {
         return $occupiedIds;
     }
 
-    public function findAvailableResources(int $parentTypeId, array $excludedIds = []): array {
-
-        $criteria = [
+    public function findAvailableResources(int $parentTypeId, string $start, string $end): array {
+        $criteriaResources = [
             'SELECT' => 'res.*',
             'FROM'   => 'glpi_plugin_reservationdetails_resources_reservationsitems AS link',
             'INNER JOIN' => [
@@ -166,23 +192,131 @@ class ResourceRepository {
                 ]
             ],
             'WHERE' => [
-                'link.reservationitems_id' => $parentTypeId,
+                'link.reservationitems_id' => $parentTypeId
             ]
         ];
 
-        if (!empty($excludedIds)) {
-            $criteria['WHERE']['NOT'] = [
-                'res.id' => $excludedIds
-            ];
+        $iteratorResources = $this->db->request($criteriaResources);
+
+        $resources = [];
+        foreach ($iteratorResources as $row) {
+            $resources[$row['id']] = $row;
+            $resources[$row['id']]['current_usage'] = 0;
         }
 
-        $iterator = $this->db->request($criteria);
-
-        $results = [];
-        foreach ($iterator as $row) {
-            $results[] = $row;
+        if (empty($resources)) {
+            return [];
         }
 
-        return $results;
+        $criteriaUsage = [
+            'SELECT' => 'link.plugin_reservationdetails_resources_id AS res_id',
+            'FROM'   => 'glpi_plugin_reservationdetails_reservations_resources AS usage_pivot',
+            'INNER JOIN' => [
+                'glpi_plugin_reservationdetails_resources_reservationsitems AS link' => [
+                    'ON' => [
+                        'usage_pivot' => 'plugin_reservationdetails_resources_reservationsitems_id',
+                        'link'        => 'id'
+                    ]
+                ],
+                'glpi_plugin_reservationdetails_reservations AS plugin_res' => [
+                    'ON' => [
+                        'usage_pivot' => 'plugin_reservationdetails_reservations_id',
+                        'plugin_res'  => 'id'
+                    ]
+                ],
+                'glpi_reservations AS glpi_res' => [
+                    'ON' => [
+                        'plugin_res' => 'reservations_id',
+                        'glpi_res'   => 'id'
+                    ]
+                ]
+            ],
+            'WHERE' => [
+                'link.plugin_reservationdetails_resources_id' => array_keys($resources),
+                'glpi_res.begin' => ['<', $end],
+                'glpi_res.end'   => ['>', $start]
+            ]
+        ];
+
+        $iteratorUsage = $this->db->request($criteriaUsage);
+
+        foreach ($iteratorUsage as $usage) {
+            $resId = $usage['res_id'];
+            if (isset($resources[$resId])) {
+                $resources[$resId]['current_usage']++;
+            }
+        }
+
+        $finalList = [];
+
+        foreach ($resources as $resource) {
+            $stock = $resource['stock'];
+            $count = $resource['current_usage'];
+
+            $isAvailable = true;
+
+            if (!is_null($stock) && $count >= $stock) {
+                $isAvailable = false;
+            }
+
+            $resource['availability'] = $isAvailable;
+
+            $finalList[] = $resource;
+        }
+
+        return $finalList;
+    }
+
+    public function getAvailabilityResource(int $resourceId, string $start, string $end): bool {
+
+        $resource = $this->db->request([
+            'SELECT' => 'stock',
+            'FROM'   => 'glpi_plugin_reservationdetails_resources',
+            'WHERE'  => ['id' => $resourceId]
+        ])->current();
+
+        if (!$resource || is_null($resource['stock'])) {
+            return true;
+        }
+
+        $stockLimit = (int)$resource['stock'];
+
+        $result = $this->db->request([
+            'COUNT'  => 'total_usage',
+            'FROM'   => 'glpi_plugin_reservationdetails_reservations_resources AS usage_pivot',
+            'INNER JOIN' => [
+                'glpi_plugin_reservationdetails_resources_reservationsitems AS context' => [
+                    'ON' => [
+                        'usage_pivot' => 'plugin_reservationdetails_resources_reservationsitems_id',
+                        'context'     => 'id'
+                    ]
+                ],
+                'glpi_plugin_reservationdetails_reservations AS plugin_res' => [
+                    'ON' => [
+                        'usage_pivot' => 'plugin_reservationdetails_reservations_id',
+                        'plugin_res'  => 'id'
+                    ]
+                ],
+                'glpi_reservations AS glpi_res' => [
+                    'ON' => [
+                        'plugin_res' => 'reservations_id',
+                        'glpi_res'   => 'id'
+                    ]
+                ]
+            ],
+            'WHERE' => [
+                'context.plugin_reservationdetails_resources_id' => $resourceId,
+                'glpi_res.begin'      => ['<', $end],
+                'glpi_res.end'        => ['>', $start],
+            ]
+        ])->current();
+
+        $currentUsage = (int)$result['total_usage'];
+
+        if ($currentUsage >= $stockLimit) {
+            return false;
+        }
+
+        return true;
     }
 }

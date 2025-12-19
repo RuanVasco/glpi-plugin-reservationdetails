@@ -62,8 +62,7 @@ class Reservation extends CommonDBTM {
             $itemType = $resItem->fields['itemtype'];
         }
 
-        $busyIds = $resourceRepo->getOccupiedResourceIds($rawBegin, $rawEnd);
-        $resources = $resourceRepo->findAvailableResources($reservationItemId, $busyIds);
+        $resources = $resourceRepo->findAvailableResources($reservationItemId, $rawBegin, $rawEnd);
 
         if (count($resources) <= 0) {
             $res = new \Reservation();
@@ -96,17 +95,19 @@ class Reservation extends CommonDBTM {
         global $DB;
 
         $reservationRepository = new ReservationRepository($DB);
-        $results = $reservationRepository->findStandardById($id);
+        $result = $reservationRepository->findStandardById($id);
 
-        foreach ($results as $result) {
-            $response = [
-                'id'                    =>  $result['id'],
-                'reservationitems_id'   =>  $result['reservationitems_id'],
-                'begin'                 =>  $result['begin'],
-                'end'                   =>  $result['end'],
-                'users_id'              =>  $result['users_id'],
-            ];
+        if (is_null($result)) {
+            return null;
         }
+
+        $response = [
+            'id'                    =>  $result['id'],
+            'reservationitems_id'   =>  $result['reservationitems_id'],
+            'begin'                 =>  $result['begin'],
+            'end'                   =>  $result['end'],
+            'users_id'              =>  $result['users_id'],
+        ];
 
         return $response;
     }
