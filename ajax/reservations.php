@@ -34,7 +34,7 @@ if (isset($_GET['byList'])) {
     $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
     $perPage = 15;
     $sortField = isset($_GET['sortField']) ? $_GET['sortField'] : 'begin';
-    $sortDir = isset($_GET['sortDir']) ? $_GET['sortDir'] : 'DESC';
+    $sortDir = isset($_GET['sortDir']) ? $_GET['sortDir'] : 'ASC';
     
     $reservations = $reservationRepository->getReservationsList($status, $page, $perPage, $sortField, $sortDir);
     $totalCount = $reservationRepository->getReservationsCount($status);

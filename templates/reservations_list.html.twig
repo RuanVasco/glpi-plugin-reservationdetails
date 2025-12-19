@@ -23,7 +23,7 @@
                 Usuário <i class="fas fa-sort"></i>
             </th>
             <th class="sortable" data-sort="begin" style="cursor: pointer;">
-                Início <i class="fas fa-sort-down"></i>
+                Início <i class="fas fa-sort-up"></i>
             </th>
             <th class="sortable" data-sort="end" style="cursor: pointer;">
                 Fim <i class="fas fa-sort"></i>
@@ -89,7 +89,7 @@
     let totalPages = {{ totalPages }};
     let currentStatus = 'open';
     let sortField = 'begin';
-    let sortDir = 'DESC';
+    let sortDir = 'ASC';
 
     function loadReservations(page, status) {
         var ajaxUrl = (typeof CFG_GLPI !== 'undefined' ? CFG_GLPI.root_doc : '') + "/plugins/reservationdetails/ajax/reservations.php";

@@ -65,7 +65,7 @@ class ReservationRepository {
     /**
      * Get reservations list by status (open or closed) with pagination and sorting
      */
-    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15, string $sortField = 'begin', string $sortDir = 'DESC'): array {
+    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15, string $sortField = 'begin', string $sortDir = 'ASC'): array {
         $now = date('Y-m-d H:i:s');
         $offset = ($page - 1) * $perPage;
         
