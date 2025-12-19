@@ -63,10 +63,11 @@ class ReservationRepository {
     }
 
     /**
-     * Get reservations list by status (open or closed)
+     * Get reservations list by status (open or closed) with pagination
      */
-    public function getReservationsList(string $status = 'open'): array {
+    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15): array {
         $now = date('Y-m-d H:i:s');
+        $offset = ($page - 1) * $perPage;
         
         $criteria = [
             'SELECT' => [
@@ -86,7 +87,9 @@ class ReservationRepository {
                     ]
                 ]
             ],
-            'ORDER' => ['glpi_reservations.begin DESC']
+            'ORDER' => ['glpi_reservations.begin DESC'],
+            'START' => $offset,
+            'LIMIT' => $perPage
         ];
 
         if ($status === 'open') {
@@ -117,6 +120,27 @@ class ReservationRepository {
         }
 
         return $results;
+    }
+
+    /**
+     * Get total count of reservations by status
+     */
+    public function getReservationsCount(string $status = 'open'): int {
+        $now = date('Y-m-d H:i:s');
+        
+        $criteria = [
+            'COUNT' => 'total',
+            'FROM' => 'glpi_reservations'
+        ];
+
+        if ($status === 'open') {
+            $criteria['WHERE'] = ['end' => ['>', $now]];
+        } else {
+            $criteria['WHERE'] = ['end' => ['<=', $now]];
+        }
+
+        $result = $this->db->request($criteria)->current();
+        return (int)$result['total'];
     }
 
     /**

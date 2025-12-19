@@ -28,10 +28,15 @@ global $DB;
 $reservationRepository = new ReservationRepository($DB);
 $resourceRepository = new ResourceRepository($DB);
 
-// Get reservations list by status
+// Get reservations list by status with pagination
 if (isset($_GET['byList'])) {
     $status = $_GET['byList'] === 'open' ? 'open' : 'closed';
-    $reservations = $reservationRepository->getReservationsList($status);
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $perPage = 15;
+    
+    $reservations = $reservationRepository->getReservationsList($status, $page, $perPage);
+    $totalCount = $reservationRepository->getReservationsCount($status);
+    $totalPages = ceil($totalCount / $perPage);
     
     $result = [];
     foreach ($reservations as $res) {
@@ -44,7 +49,12 @@ if (isset($_GET['byList'])) {
         ];
     }
     
-    echo json_encode($result);
+    echo json_encode([
+        'data'        => $result,
+        'currentPage' => $page,
+        'totalPages'  => $totalPages,
+        'totalCount'  => $totalCount
+    ]);
     exit;
 }
 

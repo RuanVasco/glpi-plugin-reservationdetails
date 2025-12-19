@@ -45,6 +45,20 @@
     </tbody>
 </table>
 
+<nav aria-label="Pagination" class="ms-3">
+    <ul class="pagination" id="paginationControls">
+        <li class="page-item {% if currentPage <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="#" id="prevPage">Anterior</a>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link" id="pageInfo">Página {{ currentPage }} de {{ totalPages }} ({{ totalCount }} registros)</span>
+        </li>
+        <li class="page-item {% if currentPage >= totalPages %}disabled{% endif %}">
+            <a class="page-link" href="#" id="nextPage">Próxima</a>
+        </li>
+    </ul>
+</nav>
+
 <div class="modal fade" id="reservationModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -62,17 +76,25 @@
 </div>
 
 <script type="text/javascript">
-    $("#porLista").on("change", (e) => {
+    let currentPage = {{ currentPage }};
+    let totalPages = {{ totalPages }};
+    let currentStatus = 'open';
+
+    function loadReservations(page, status) {
         $.get(
             "{{ path('/plugins/reservationdetails/ajax/reservations.php') }}",
             {
-                byList: $("#porLista").val(),                
+                byList: status,
+                page: page
             },
             function(response) {
                 let table = $("#reservations_table_body");
                 table.empty();
 
-                response.forEach((c) => {
+                currentPage = response.currentPage;
+                totalPages = response.totalPages;
+
+                response.data.forEach((c) => {
                     table.append(`
                         <tr>                     
                             <td>
@@ -92,8 +114,46 @@
                         </tr>                    
                     `);
                 });
+
+                updatePaginationControls(response);
             }
         );
+    }
+
+    function updatePaginationControls(response) {
+        $("#pageInfo").text(`Página ${response.currentPage} de ${response.totalPages} (${response.totalCount} registros)`);
+        
+        if (response.currentPage <= 1) {
+            $("#prevPage").parent().addClass("disabled");
+        } else {
+            $("#prevPage").parent().removeClass("disabled");
+        }
+        
+        if (response.currentPage >= response.totalPages) {
+            $("#nextPage").parent().addClass("disabled");
+        } else {
+            $("#nextPage").parent().removeClass("disabled");
+        }
+    }
+
+    $("#porLista").on("change", (e) => {
+        currentStatus = $("#porLista").val();
+        currentPage = 1;
+        loadReservations(1, currentStatus);
+    });
+
+    $("#prevPage").on("click", (e) => {
+        e.preventDefault();
+        if (currentPage > 1) {
+            loadReservations(currentPage - 1, currentStatus);
+        }
+    });
+
+    $("#nextPage").on("click", (e) => {
+        e.preventDefault();
+        if (currentPage < totalPages) {
+            loadReservations(currentPage + 1, currentStatus);
+        }
     });
 
     function showFormModal(e) {  
@@ -145,3 +205,4 @@
         );
     }
 </script>
+

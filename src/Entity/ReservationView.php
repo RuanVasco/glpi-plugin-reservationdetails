@@ -3,47 +3,83 @@
 namespace GlpiPlugin\Reservationdetails\Entity;
 
 use CommonGLPI;
+use CommonDBTM;
 use Session;
+use Glpi\Application\View\TemplateRenderer;
+use GlpiPlugin\Reservationdetails\Repository\ReservationRepository;
+use GlpiPlugin\Reservationdetails\Utils;
 
 class ReservationView extends CommonGLPI {
 
     public static $rightname = 'plugin_reservationdetails_reservations';
 
     public static function getTypeName($nb = 0) {
-        return __('Reservations View');
-    }
-
-    public static function getIcon() {
-        return 'fas fa-calendar-check';
-    }
-
-    public static function getMenuName() {
-        return __('Reservations View');
+        return __('Visualizar Reservas');
     }
 
     public static function canView(): bool {
         return Session::haveRight(self::$rightname, READ);
     }
 
-    public static function getMenuContent() {
-        $menu = [];
-
-        if (self::canView()) {
-            $menu['title'] = self::getMenuName();
-            $menu['page']  = '/plugins/reservationdetails/front/reservations.php';
-            $menu['icon']  = self::getIcon();
+    /**
+     * Get tab name for ReservationItem
+     */
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
+        if ($item instanceof \ReservationItem || $item->getType() === 'ReservationItem') {
+            if (self::canView()) {
+                return self::getTypeName();
+            }
         }
-
-        return $menu;
+        return '';
     }
 
-    static function getSearchURL($full = true) {
-        global $CFG_GLPI;
+    /**
+     * Display tab content for ReservationItem
+     */
+    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
+        if ($item instanceof \ReservationItem || $item->getType() === 'ReservationItem') {
+            self::showReservationsList();
+        }
+        return true;
+    }
 
-        if ($full) {
-            return $CFG_GLPI['url_base'] . "/plugins/reservationdetails/front/reservations.php";
+    /**
+     * Show reservations list
+     */
+    public static function showReservationsList(): void {
+        global $DB;
+
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $perPage = 15;
+        $status = 'open';
+
+        $reservationRepository = new ReservationRepository($DB);
+        $reservations = $reservationRepository->getReservationsList($status, $page, $perPage);
+        $totalCount = $reservationRepository->getReservationsCount($status);
+        $totalPages = ceil($totalCount / $perPage);
+
+        $columns = ['Item', 'Usuário', 'Início', 'Fim'];
+        $values = [];
+
+        foreach ($reservations as $res) {
+            $values[] = [
+                'id'    => $res['id'],
+                'item'  => $res['item'],
+                'user'  => $res['user'],
+                'begin' => Utils::formatToBr($res['begin']),
+                'end'   => Utils::formatToBr($res['end'])
+            ];
         }
 
-        return $CFG_GLPI['root_doc'] . "/plugins/reservationdetails/front/reservations.php";
+        $loader = new TemplateRenderer();
+        $loader->display('@reservationdetails/reservations_list.html.twig', [
+            'columns'     => $columns,
+            'values'      => $values,
+            'view'        => 'true',
+            'currentPage' => $page,
+            'totalPages'  => $totalPages,
+            'perPage'     => $perPage,
+            'totalCount'  => $totalCount
+        ]);
     }
 }

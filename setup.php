@@ -2,6 +2,7 @@
 
 use GlpiPlugin\Reservationdetails\Entity\Resource;
 use GlpiPlugin\Reservationdetails\Entity\Profile;
+use GlpiPlugin\Reservationdetails\Entity\ReservationView;
 
 define('PLUGIN_RESERVATIONDETAILS_VERSION', '0.1.0');
 
@@ -22,15 +23,11 @@ function plugin_init_reservationdetails() {
     // Register profile tab
     Plugin::registerClass(Profile::class, ['addtabon' => ['Profile']]);
 
+    // Register reservations view tab on ReservationItem
+    Plugin::registerClass(ReservationView::class, ['addtabon' => ['ReservationItem']]);
+
     // Reload rights when profile changes
     $PLUGIN_HOOKS['change_profile']['reservationdetails'] = 'plugin_reservationdetails_changeprofile';
-
-    // Add menu entry in Tools if user has permission
-    if (Session::haveRight(\GlpiPlugin\Reservationdetails\Entity\Reservation::$rightname, READ)) {
-        $PLUGIN_HOOKS['menu_toadd']['reservationdetails'] = [
-            'tools' => [\GlpiPlugin\Reservationdetails\Entity\ReservationView::class]
-        ];
-    }
 }
 
 function plugin_version_reservationdetails() {
