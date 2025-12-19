@@ -2,12 +2,12 @@
 
 namespace GlpiPlugin\Reservationdetails\Entity;
 
-use CommonDBTM;
+use CommonDropdown;
 use Html;
 use Session;
 use Glpi\Application\View\TemplateRenderer;
 
-class CustomField extends CommonDBTM {
+class CustomField extends CommonDropdown {
     public static $rightname = 'plugin_reservationdetails_customfields';
 
     public static function getTypeName($nb = 0) {
@@ -67,45 +67,22 @@ class CustomField extends CommonDBTM {
     }
 
     public function rawSearchOptions() {
-        $tab = [];
-
-        $tab[] = [
-            'id'   => 'common',
-            'name' => self::getTypeName(2)
-        ];
-
-        $tab[] = [
-            'id'            => '1',
-            'table'         => self::getTable(),
-            'field'         => 'field_label',
-            'name'          => __('Name'),
-            'datatype'      => 'itemlink',
-            'massiveaction' => false
-        ];
-
-        $tab[] = [
-            'id'            => '2',
-            'table'         => self::getTable(),
-            'field'         => 'id',
-            'name'          => __('ID'),
-            'massiveaction' => false,
-            'datatype'      => 'number'
-        ];
-
-        $tab[] = [
-            'id'            => '10',
-            'table'         => self::getTable(),
-            'field'         => 'itemtype',
-            'name'          => __('Item Type'),
-            'datatype'      => 'string',
-            'massiveaction' => true
-        ];
+        $tab = parent::rawSearchOptions();
 
         $tab[] = [
             'id'            => '11',
             'table'         => self::getTable(),
             'field'         => 'field_name',
             'name'          => __('Field Name'),
+            'datatype'      => 'string',
+            'massiveaction' => false
+        ];
+
+        $tab[] = [
+            'id'            => '12',
+            'table'         => self::getTable(),
+            'field'         => 'field_label',
+            'name'          => __('Label'),
             'datatype'      => 'string',
             'massiveaction' => false
         ];

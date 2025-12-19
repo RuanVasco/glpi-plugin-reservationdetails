@@ -10,6 +10,10 @@ $customField = new CustomField();
 
 if (isset($_POST['add'])) {
     $customField->check(-1, CREATE, $_POST);
+    // Remove id for new records to allow auto-increment
+    if (isset($_POST['id']) && $_POST['id'] <= 0) {
+        unset($_POST['id']);
+    }
     if ($customField->add($_POST)) {
         Session::addMessageAfterRedirect(__('Item successfully added'), true, INFO);
     }
@@ -30,6 +34,17 @@ if (isset($_POST['add'])) {
     $customField->redirectToList();
 
 } else {
-    $menus = ['config', 'commondropdown', CustomField::class];
-    CustomField::displayFullPageForItem($_GET['id'] ?? -1, $menus);
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : -1;
+    
+    Html::header(
+        CustomField::getTypeName(Session::getPluralNumber()),
+        $_SERVER['PHP_SELF'],
+        'config',
+        'commondropdown',
+        CustomField::class
+    );
+    
+    $customField->display(['id' => $id]);
+    
+    Html::footer();
 }

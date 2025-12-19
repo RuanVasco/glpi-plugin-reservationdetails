@@ -33,6 +33,11 @@ function plugin_init_reservationdetails() {
 
     // Reload rights when profile changes
     $PLUGIN_HOOKS['change_profile']['reservationdetails'] = 'plugin_reservationdetails_changeprofile';
+
+    // Add config menu for Custom Fields
+    if (Session::haveRight('config', READ)) {
+        $PLUGIN_HOOKS['config_page']['reservationdetails'] = 'front/customfield.php';
+    }
 }
 
 function plugin_version_reservationdetails() {

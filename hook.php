@@ -117,6 +117,20 @@ function plugin_reservationdetails_install() {
         }
     }
 
+    // Add name and comment columns to customfields for CommonDropdown compatibility
+    if ($DB->tableExists('glpi_plugin_reservationdetails_customfields')) {
+        if (!$DB->fieldExists('glpi_plugin_reservationdetails_customfields', 'name')) {
+            $DB->doQueryOrDie(
+                "ALTER TABLE `glpi_plugin_reservationdetails_customfields` 
+                 ADD COLUMN `name` VARCHAR(255) DEFAULT NULL,
+                 ADD COLUMN `comment` TEXT DEFAULT NULL",
+                $DB->error()
+            );
+            // Copy field_label to name for existing records
+            $DB->doQuery("UPDATE `glpi_plugin_reservationdetails_customfields` SET `name` = `field_label` WHERE `name` IS NULL");
+        }
+    }
+
     $migration->executeMigration();
     return true;
 }
