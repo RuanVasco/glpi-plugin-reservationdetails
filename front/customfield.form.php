@@ -14,6 +14,10 @@ if (isset($_POST['add'])) {
     if (isset($_POST['id']) && $_POST['id'] <= 0) {
         unset($_POST['id']);
     }
+    // Sync name with field_label for CommonDropdown compatibility
+    if (isset($_POST['field_label'])) {
+        $_POST['name'] = $_POST['field_label'];
+    }
     if ($customField->add($_POST)) {
         Session::addMessageAfterRedirect(__('Item successfully added'), true, INFO);
     }
@@ -21,6 +25,10 @@ if (isset($_POST['add'])) {
 
 } else if (isset($_POST['update'])) {
     $customField->check($_POST['id'], UPDATE);
+    // Sync name with field_label for CommonDropdown compatibility
+    if (isset($_POST['field_label'])) {
+        $_POST['name'] = $_POST['field_label'];
+    }
     if ($customField->update($_POST)) {
         Session::addMessageAfterRedirect(__('Item successfully updated'), true, INFO);
     }
