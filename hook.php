@@ -2,6 +2,7 @@
 
 use GlpiPlugin\Reservationdetails\Entity\Reservation;
 use GlpiPlugin\Reservationdetails\Entity\Resource;
+use GlpiPlugin\Reservationdetails\Entity\Profile;
 
 function plugin_reservationdetails_install() {
     global $DB;
@@ -65,6 +66,9 @@ function plugin_reservationdetails_install() {
         $DB->doQueryOrDie($query, $DB->error());
     }
 
+    // Install profile rights
+    Profile::installRights();
+
     $migration->executeMigration();
     return true;
 }
@@ -84,6 +88,9 @@ function plugin_reservationdetails_uninstall() {
             $DB->dropTable($table);
         }
     }
+
+    // Remove profile rights
+    Profile::uninstallRights();
 
     return true;
 }

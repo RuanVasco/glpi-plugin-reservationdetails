@@ -1,6 +1,7 @@
 <?php
 
 use GlpiPlugin\Reservationdetails\Entity\Resource;
+use GlpiPlugin\Reservationdetails\Entity\Profile;
 
 define('PLUGIN_RESERVATIONDETAILS_VERSION', '0.1.0');
 
@@ -17,6 +18,12 @@ function plugin_init_reservationdetails() {
     $PLUGIN_HOOKS['post_item_form']['reservationdetails'] = [
         'Reservation' => 'plugin_reservationdetails_params_hook'
     ];
+
+    // Register profile tab
+    Plugin::registerClass(Profile::class, ['addtabon' => ['Profile']]);
+
+    // Reload rights when profile changes
+    $PLUGIN_HOOKS['change_profile']['reservationdetails'] = 'plugin_reservationdetails_changeprofile';
 }
 
 function plugin_version_reservationdetails() {
@@ -42,4 +49,14 @@ function plugin_reservationdetails_check_prerequisites() {
 
 function plugin_reservationdetails_getDropdown() {
     return [Resource::class => Resource::getTypeName(2)];
+}
+
+function plugin_reservationdetails_changeprofile() {
+    // Refresh rights when profile changes
+    $rights = Profile::getAllRights();
+    foreach ($rights as $right) {
+        if (isset($_SESSION['glpiactiveprofile'][$right['field']])) {
+            // Rights are already loaded
+        }
+    }
 }
