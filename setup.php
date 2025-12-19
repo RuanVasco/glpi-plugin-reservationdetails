@@ -17,6 +17,10 @@ function plugin_init_reservationdetails() {
         'Reservation' => 'plugin_reservationdetails_additem_called'
     ];
 
+    $PLUGIN_HOOKS['item_purge']['reservationdetails'] = [
+        'Reservation' => 'plugin_reservationdetails_purgeitem_called'
+    ];
+
     $PLUGIN_HOOKS['post_item_form']['reservationdetails'] = [
         'Reservation' => 'plugin_reservationdetails_params_hook'
     ];

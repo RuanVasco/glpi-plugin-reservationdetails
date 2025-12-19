@@ -81,7 +81,7 @@ class ResourceRepository {
         return $usageCount < $stockTotal;
     }
 
-    public function linkResourceToReservation(int $resourceId, int $reservationItemId, int $glpiReservationId): bool {
+    public function linkResourceToReservation(int $resourceId, int $reservationItemId, int $glpiReservationId, ?int $ticketId = null): bool {
         // Busca o ID correto na tabela de vínculo resource-reservationitem
         $linkRecord = $this->db->request([
             'SELECT' => 'id',
@@ -109,12 +109,18 @@ class ResourceRepository {
             return false;
         }
 
+        $insertData = [
+            'plugin_reservationdetails_resources_reservationsitems_id' => $linkRecord['id'],
+            'plugin_reservationdetails_reservations_id'                => $pluginReservation['id']
+        ];
+        
+        if ($ticketId !== null) {
+            $insertData['tickets_id'] = $ticketId;
+        }
+
         $result = $this->db->insert(
             'glpi_plugin_reservationdetails_reservations_resources',
-            [
-                'plugin_reservationdetails_resources_reservationsitems_id' => $linkRecord['id'],
-                'plugin_reservationdetails_reservations_id'                => $pluginReservation['id']
-            ]
+            $insertData
         );
 
         return (bool) $result;

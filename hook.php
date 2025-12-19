@@ -105,6 +105,18 @@ function plugin_reservationdetails_install() {
     // Install profile rights
     Profile::installRights();
 
+    // Add ticket_id column to reservations_resources if not exists (migration)
+    if ($DB->tableExists('glpi_plugin_reservationdetails_reservations_resources')) {
+        if (!$DB->fieldExists('glpi_plugin_reservationdetails_reservations_resources', 'tickets_id')) {
+            $DB->doQueryOrDie(
+                "ALTER TABLE `glpi_plugin_reservationdetails_reservations_resources` 
+                 ADD COLUMN `tickets_id` INT(11) UNSIGNED DEFAULT NULL,
+                 ADD KEY `tickets_id` (`tickets_id`)",
+                $DB->error()
+            );
+        }
+    }
+
     $migration->executeMigration();
     return true;
 }
@@ -184,5 +196,62 @@ function plugin_reservationdetails_additem_called(CommonDBTM $item) {
 function plugin_reservationdetails_params_hook(array $params) {
     if (($params['item'] == new \Reservation())) {
         Reservation::addFieldsInReservationForm();
+    }
+}
+
+/**
+ * Handle reservation deletion - close associated tickets
+ */
+function plugin_reservationdetails_purgeitem_called(CommonDBTM $item) {
+    if ($item::getType() == \Reservation::class) {
+        global $DB;
+        
+        $reservationId = $item->getID();
+        
+        // Find the plugin reservation record
+        $pluginReservation = $DB->request([
+            'SELECT' => 'id',
+            'FROM'   => 'glpi_plugin_reservationdetails_reservations',
+            'WHERE'  => ['reservations_id' => $reservationId]
+        ])->current();
+        
+        if (!$pluginReservation) {
+            return;
+        }
+        
+        // Find associated tickets
+        $tickets = $DB->request([
+            'SELECT' => 'tickets_id',
+            'FROM'   => 'glpi_plugin_reservationdetails_reservations_resources',
+            'WHERE'  => [
+                'plugin_reservationdetails_reservations_id' => $pluginReservation['id'],
+                'tickets_id' => ['>', 0]
+            ]
+        ]);
+        
+        foreach ($tickets as $row) {
+            if (!empty($row['tickets_id'])) {
+                $ticket = new \Ticket();
+                if ($ticket->getFromDB($row['tickets_id'])) {
+                    // Solve the ticket (status 5 = Solved in GLPI)
+                    $ticket->update([
+                        'id'     => $row['tickets_id'],
+                        'status' => \CommonITILObject::SOLVED,
+                        'solution' => 'Reserva cancelada/excluída pelo sistema.'
+                    ]);
+                    
+                    \Session::addMessageAfterRedirect(
+                        sprintf(__("Chamado #%d solucionado automaticamente."), $row['tickets_id']),
+                        true,
+                        INFO
+                    );
+                }
+            }
+        }
+        
+        // Clean up plugin data (cascade will handle resources relationship)
+        $DB->delete('glpi_plugin_reservationdetails_reservations', [
+            'reservations_id' => $reservationId
+        ]);
     }
 }

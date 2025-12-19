@@ -161,7 +161,7 @@ class Resource extends CommonDropdown {
 
         if ($isAvailable) {
 
-            $resourceRepository->linkResourceToReservation($idResource, $reservationRoomId, $idReservation);
+            $ticketId = null;
             if (!empty($resourceData['ticket_entities_id'])) {
 
                 $roomName = $reservationRepository->getReservationItemName($reservationRoomId);
@@ -181,8 +181,10 @@ class Resource extends CommonDropdown {
                 ];
 
                 $track = new \Ticket();
-                $track->add($ticket);
+                $ticketId = $track->add($ticket);
             }
+
+            $resourceRepository->linkResourceToReservation($idResource, $reservationRoomId, $idReservation, $ticketId);
 
             return true;
         } else {
