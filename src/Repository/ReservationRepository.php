@@ -63,11 +63,29 @@ class ReservationRepository {
     }
 
     /**
-     * Get reservations list by status (open or closed) with pagination
+     * Get reservations list by status (open or closed) with pagination and sorting
      */
-    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15): array {
+    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15, string $sortField = 'begin', string $sortDir = 'DESC'): array {
         $now = date('Y-m-d H:i:s');
         $offset = ($page - 1) * $perPage;
+        
+        // Validate sort field
+        $allowedFields = ['begin', 'end', 'item', 'user'];
+        if (!in_array($sortField, $allowedFields)) {
+            $sortField = 'begin';
+        }
+        
+        // Validate sort direction
+        $sortDir = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
+        
+        // Map sort field to actual column
+        $sortColumn = match($sortField) {
+            'begin' => 'glpi_reservations.begin',
+            'end'   => 'glpi_reservations.end',
+            'item'  => 'glpi_reservationitems.items_id',
+            'user'  => 'glpi_reservations.users_id',
+            default => 'glpi_reservations.begin'
+        };
         
         $criteria = [
             'SELECT' => [
@@ -87,7 +105,7 @@ class ReservationRepository {
                     ]
                 ]
             ],
-            'ORDER' => ['glpi_reservations.begin DESC'],
+            'ORDER' => ["$sortColumn $sortDir"],
             'START' => $offset,
             'LIMIT' => $perPage
         ];
@@ -202,13 +220,38 @@ class ReservationRepository {
             $recursos[] = ['name' => $resource['name']];
         }
 
+        // Get custom field values for this reservation
+        $customFieldValues = [];
+        $cfQuery = $this->db->request([
+            'SELECT' => ['cf.field_label', 'cfv.value'],
+            'FROM'   => 'glpi_plugin_reservationdetails_customfields_values AS cfv',
+            'INNER JOIN' => [
+                'glpi_plugin_reservationdetails_customfields AS cf' => [
+                    'ON' => [
+                        'cf'  => 'id',
+                        'cfv' => 'customfields_id'
+                    ]
+                ]
+            ],
+            'WHERE' => ['cfv.reservations_id' => $reservationId],
+            'ORDER' => 'cf.field_order ASC'
+        ]);
+
+        foreach ($cfQuery as $cf) {
+            $customFieldValues[] = [
+                'label' => $cf['field_label'],
+                'value' => $cf['value']
+            ];
+        }
+
         return [
-            'user'     => $userName,
-            'itemName' => $itemName,
-            'begin'    => \GlpiPlugin\Reservationdetails\Utils::formatToBr($reservation->fields['begin']),
-            'end'      => \GlpiPlugin\Reservationdetails\Utils::formatToBr($reservation->fields['end']),
-            'comment'  => $reservation->fields['comment'] ?? '',
-            'recursos' => $recursos
+            'user'         => $userName,
+            'itemName'     => $itemName,
+            'begin'        => \GlpiPlugin\Reservationdetails\Utils::formatToBr($reservation->fields['begin']),
+            'end'          => \GlpiPlugin\Reservationdetails\Utils::formatToBr($reservation->fields['end']),
+            'comment'      => $reservation->fields['comment'] ?? '',
+            'recursos'     => $recursos,
+            'customFields' => $customFieldValues
         ];
     }
 }

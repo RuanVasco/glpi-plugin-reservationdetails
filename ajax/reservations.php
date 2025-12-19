@@ -28,13 +28,15 @@ global $DB;
 $reservationRepository = new ReservationRepository($DB);
 $resourceRepository = new ResourceRepository($DB);
 
-// Get reservations list by status with pagination
+// Get reservations list by status with pagination and sorting
 if (isset($_GET['byList'])) {
     $status = $_GET['byList'] === 'open' ? 'open' : 'closed';
     $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
     $perPage = 15;
+    $sortField = isset($_GET['sortField']) ? $_GET['sortField'] : 'begin';
+    $sortDir = isset($_GET['sortDir']) ? $_GET['sortDir'] : 'DESC';
     
-    $reservations = $reservationRepository->getReservationsList($status, $page, $perPage);
+    $reservations = $reservationRepository->getReservationsList($status, $page, $perPage, $sortField, $sortDir);
     $totalCount = $reservationRepository->getReservationsCount($status);
     $totalPages = ceil($totalCount / $perPage);
     
@@ -53,7 +55,9 @@ if (isset($_GET['byList'])) {
         'data'        => $result,
         'currentPage' => $page,
         'totalPages'  => $totalPages,
-        'totalCount'  => $totalCount
+        'totalCount'  => $totalCount,
+        'sortField'   => $sortField,
+        'sortDir'     => $sortDir
     ]);
     exit;
 }

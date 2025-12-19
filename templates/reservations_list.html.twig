@@ -16,9 +16,18 @@
             {% if view == 'true' %}
                 <th>Ver</th>
             {% endif %}        
-            {% for column in columns %}
-                <th>{{ column }}</th>
-            {% endfor %}            
+            <th class="sortable" data-sort="item" style="cursor: pointer;">
+                Item <i class="fas fa-sort"></i>
+            </th>
+            <th class="sortable" data-sort="user" style="cursor: pointer;">
+                Usuário <i class="fas fa-sort"></i>
+            </th>
+            <th class="sortable" data-sort="begin" style="cursor: pointer;">
+                Início <i class="fas fa-sort-down"></i>
+            </th>
+            <th class="sortable" data-sort="end" style="cursor: pointer;">
+                Fim <i class="fas fa-sort"></i>
+            </th>
         </tr>
     </thead>
     <tbody id="reservations_table_body">               
@@ -79,6 +88,8 @@
     let currentPage = {{ currentPage }};
     let totalPages = {{ totalPages }};
     let currentStatus = 'open';
+    let sortField = 'begin';
+    let sortDir = 'DESC';
 
     function loadReservations(page, status) {
         var ajaxUrl = (typeof CFG_GLPI !== 'undefined' ? CFG_GLPI.root_doc : '') + "/plugins/reservationdetails/ajax/reservations.php";
@@ -88,7 +99,9 @@
             type: "GET",
             data: {
                 byList: status,
-                page: page
+                page: page,
+                sortField: sortField,
+                sortDir: sortDir
             },
             dataType: "json",
             success: function(response) {
@@ -98,6 +111,8 @@
                 if (response.data && response.data.length > 0) {
                     currentPage = response.currentPage;
                     totalPages = response.totalPages;
+                    sortField = response.sortField;
+                    sortDir = response.sortDir;
 
                     response.data.forEach((c) => {
                         table.append(`
@@ -124,12 +139,20 @@
                 }
 
                 updatePaginationControls(response);
+                updateSortIcons();
             },
             error: function(xhr, status, error) {
                 console.error("Error:", error);
                 $("#reservations_table_body").html('<tr><td colspan="5" class="text-center text-danger">Erro ao carregar reservas</td></tr>');
             }
         });
+    }
+
+    function updateSortIcons() {
+        $(".sortable i").removeClass("fa-sort-up fa-sort-down").addClass("fa-sort");
+        $(`.sortable[data-sort="${sortField}"] i`)
+            .removeClass("fa-sort")
+            .addClass(sortDir === 'ASC' ? 'fa-sort-up' : 'fa-sort-down');
     }
 
     function updatePaginationControls(response) {
@@ -166,6 +189,18 @@
         if (currentPage < totalPages) {
             loadReservations(currentPage + 1, currentStatus);
         }
+    });
+
+    $(".sortable").on("click", function() {
+        let newSort = $(this).data("sort");
+        if (newSort === sortField) {
+            sortDir = sortDir === 'ASC' ? 'DESC' : 'ASC';
+        } else {
+            sortField = newSort;
+            sortDir = 'DESC';
+        }
+        currentPage = 1;
+        loadReservations(1, currentStatus);
     });
 
     function showFormModal(e) {  
@@ -209,6 +244,17 @@
                     });                               
                                     
                     rows += `</ul></td></tr>`;                 
+                }
+
+                // Display custom fields
+                if (response.customFields && response.customFields.length > 0) {
+                    response.customFields.forEach((field) => {
+                        rows += `
+                            <tr>
+                                <td>${field.label}</td>
+                                <td>${field.value}</td>
+                            </tr>`;
+                    });
                 }
 
                 table.html(rows);
