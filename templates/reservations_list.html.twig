@@ -81,43 +81,55 @@
     let currentStatus = 'open';
 
     function loadReservations(page, status) {
-        $.get(
-            "{{ path('/plugins/reservationdetails/ajax/reservations.php') }}",
-            {
+        var ajaxUrl = (typeof CFG_GLPI !== 'undefined' ? CFG_GLPI.root_doc : '') + "/plugins/reservationdetails/ajax/reservations.php";
+        
+        $.ajax({
+            url: ajaxUrl,
+            type: "GET",
+            data: {
                 byList: status,
                 page: page
             },
-            function(response) {
+            dataType: "json",
+            success: function(response) {
                 let table = $("#reservations_table_body");
                 table.empty();
 
-                currentPage = response.currentPage;
-                totalPages = response.totalPages;
+                if (response.data && response.data.length > 0) {
+                    currentPage = response.currentPage;
+                    totalPages = response.totalPages;
 
-                response.data.forEach((c) => {
-                    table.append(`
-                        <tr>                     
-                            <td>
-                                <button 
-                                    type="button"
-                                    class="btn btn-primary"
-                                    value="${c["id"]}"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#reservationModal"
-                                    onclick="showFormModal(this)"
-                                ><i class="fas fa-eye"></i></button>
-                            </td>               
-                            <td>${c["item"]}</td>
-                            <td>${c["user"]}</td>
-                            <td>${c["begin"]}</td>
-                            <td>${c["end"]}</td>
-                        </tr>                    
-                    `);
-                });
+                    response.data.forEach((c) => {
+                        table.append(`
+                            <tr>                     
+                                <td>
+                                    <button 
+                                        type="button"
+                                        class="btn btn-primary"
+                                        value="${c.id}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#reservationModal"
+                                        onclick="showFormModal(this)"
+                                    ><i class="fas fa-eye"></i></button>
+                                </td>               
+                                <td>${c.item}</td>
+                                <td>${c.user}</td>
+                                <td>${c.begin}</td>
+                                <td>${c.end}</td>
+                            </tr>                    
+                        `);
+                    });
+                } else {
+                    table.append('<tr><td colspan="5" class="text-center">Nenhuma reserva encontrada</td></tr>');
+                }
 
                 updatePaginationControls(response);
+            },
+            error: function(xhr, status, error) {
+                console.error("Error:", error);
+                $("#reservations_table_body").html('<tr><td colspan="5" class="text-center text-danger">Erro ao carregar reservas</td></tr>');
             }
-        );
+        });
     }
 
     function updatePaginationControls(response) {
@@ -158,7 +170,7 @@
 
     function showFormModal(e) {  
         $.get(
-            "{{ path('/plugins/reservationdetails/ajax/reservations.php') }}",
+            CFG_GLPI.root_doc + "/plugins/reservationdetails/ajax/reservations.php",
             {
                 id: e.value,                
             },

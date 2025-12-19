@@ -17,6 +17,10 @@ class ReservationView extends CommonGLPI {
         return __('Visualizar Reservas');
     }
 
+    public static function getIcon() {
+        return 'fas fa-calendar-check';
+    }
+
     public static function canView(): bool {
         return Session::haveRight(self::$rightname, READ);
     }
@@ -27,7 +31,7 @@ class ReservationView extends CommonGLPI {
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
         if ($item instanceof \ReservationItem || $item->getType() === 'ReservationItem') {
             if (self::canView()) {
-                return self::getTypeName();
+                return '<i class="' . self::getIcon() . '"></i>&nbsp;' . self::getTypeName();
             }
         }
         return '';

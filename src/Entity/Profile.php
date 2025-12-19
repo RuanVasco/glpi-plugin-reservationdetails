@@ -16,6 +16,10 @@ class Profile extends CommonGLPI {
         return __('Reservation Details');
     }
 
+    public static function getIcon() {
+        return 'fas fa-calendar-alt';
+    }
+
     /**
      * Get all rights defined by the plugin
      */
@@ -50,9 +54,6 @@ class Profile extends CommonGLPI {
      */
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
         if ($item instanceof GlpiProfile) {
-            if ($item->getField('interface') == 'central') {
-                return self::getTypeName();
-            }
             return self::getTypeName();
         }
         return '';
