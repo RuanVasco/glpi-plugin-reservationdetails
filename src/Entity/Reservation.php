@@ -20,6 +20,11 @@ class Reservation extends CommonDBTM {
         return true;
     }
 
+    // Return GLPI native table - this class doesn't have its own table
+    public static function getTable($classname = null) {
+        return 'glpi_reservations';
+    }
+
     public static function getFormURL($full = true) {
         global $CFG_GLPI;
 
