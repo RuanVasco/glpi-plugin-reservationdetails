@@ -1,12 +1,23 @@
 {% import "components/form/fields_macros.html.twig" as fields %}
 
-<div class="ms-3">
-    <label for="porLista" class="form-label">Mostrar reservas</label>
-    <div style="width: 20vw">
-        <select class="form-select" id="porLista">
-            <option value="open">Em aberto</option>
-            <option value="closed">Fechadas</option>
-        </select>
+<div class="d-flex align-items-end gap-3 ms-3 mb-3">
+    <div>
+        <label for="porLista" class="form-label">Mostrar reservas</label>
+        <div style="width: 200px">
+            <select class="form-select" id="porLista">
+                <option value="open">Em aberto</option>
+                <option value="closed">Fechadas</option>
+            </select>
+        </div>
+    </div>
+    <div>
+        <label for="searchInput" class="form-label">Pesquisar</label>
+        <div class="input-group" style="width: 300px">
+            <input type="text" class="form-control" id="searchInput" placeholder="Item, usuário ou data...">
+            <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -90,6 +101,7 @@
     let currentStatus = 'open';
     let sortField = 'begin';
     let sortDir = 'ASC';
+    let searchQuery = '';
 
     function loadReservations(page, status) {
         var ajaxUrl = (typeof CFG_GLPI !== 'undefined' ? CFG_GLPI.root_doc : '') + "/plugins/reservationdetails/ajax/reservations.php";
@@ -101,7 +113,8 @@
                 byList: status,
                 page: page,
                 sortField: sortField,
-                sortDir: sortDir
+                sortDir: sortDir,
+                search: searchQuery
             },
             dataType: "json",
             success: function(response) {
@@ -201,6 +214,21 @@
         }
         currentPage = 1;
         loadReservations(1, currentStatus);
+    });
+
+    // Search handlers
+    $("#searchBtn").on("click", function() {
+        searchQuery = $("#searchInput").val().trim();
+        currentPage = 1;
+        loadReservations(1, currentStatus);
+    });
+
+    $("#searchInput").on("keypress", function(e) {
+        if (e.which === 13) {
+            searchQuery = $(this).val().trim();
+            currentPage = 1;
+            loadReservations(1, currentStatus);
+        }
     });
 
     function showFormModal(e) {  

@@ -63,9 +63,9 @@ class ReservationRepository {
     }
 
     /**
-     * Get reservations list by status (open or closed) with pagination and sorting
+     * Get reservations list by status (open or closed) with pagination, sorting and search
      */
-    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15, string $sortField = 'begin', string $sortDir = 'ASC'): array {
+    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15, string $sortField = 'begin', string $sortDir = 'ASC', string $search = ''): array {
         $now = date('Y-m-d H:i:s');
         $offset = ($page - 1) * $perPage;
         
@@ -118,6 +118,7 @@ class ReservationRepository {
 
         $iterator = $this->db->request($criteria);
         $results = [];
+        $searchLower = strtolower($search);
 
         foreach ($iterator as $row) {
             $user = new \User();
@@ -127,6 +128,17 @@ class ReservationRepository {
             }
 
             $itemName = $this->getItemName($row['itemtype'], $row['items_id']);
+
+            // Apply search filter if provided
+            if (!empty($search)) {
+                $matchItem = strpos(strtolower($itemName), $searchLower) !== false;
+                $matchUser = strpos(strtolower($userName), $searchLower) !== false;
+                $matchDate = strpos($row['begin'], $search) !== false || strpos($row['end'], $search) !== false;
+                
+                if (!$matchItem && !$matchUser && !$matchDate) {
+                    continue;
+                }
+            }
 
             $results[] = [
                 'id'    => $row['id'],
@@ -141,9 +153,16 @@ class ReservationRepository {
     }
 
     /**
-     * Get total count of reservations by status
+     * Get total count of reservations by status and optional search
      */
-    public function getReservationsCount(string $status = 'open'): int {
+    public function getReservationsCount(string $status = 'open', string $search = ''): int {
+        // If search is provided, we need to count differently since we filter in PHP
+        if (!empty($search)) {
+            // Get all matching records (without limit) and count
+            $allResults = $this->getReservationsList($status, 1, 9999, 'begin', 'ASC', $search);
+            return count($allResults);
+        }
+        
         $now = date('Y-m-d H:i:s');
         
         $criteria = [

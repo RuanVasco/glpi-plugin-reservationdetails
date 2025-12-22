@@ -186,7 +186,7 @@ class ResourceRepository {
                 ]
             ],
             'WHERE' => [
-                'context.reservations_id' => ['IS NOT', null],
+                ['NOT' => ['context.reservations_id' => null]],
                 'gres.begin'              => ['<', $end],
                 'gres.end'                => ['>', $start]
             ]
@@ -242,7 +242,7 @@ class ResourceRepository {
             ],
             'WHERE' => [
                 'link.plugin_reservationdetails_resources_id' => array_keys($resources),
-                'link.reservations_id' => ['IS NOT', null],
+                ['NOT' => ['link.reservations_id' => null]],
                 'glpi_res.begin' => ['<', $end],
                 'glpi_res.end'   => ['>', $start]
             ]
@@ -304,7 +304,7 @@ class ResourceRepository {
             ],
             'WHERE' => [
                 'context.plugin_reservationdetails_resources_id' => $resourceId,
-                'context.reservations_id' => ['IS NOT', null],
+                ['NOT' => ['context.reservations_id' => null]],
                 'glpi_res.begin'          => ['<', $end],
                 'glpi_res.end'            => ['>', $start],
             ]
