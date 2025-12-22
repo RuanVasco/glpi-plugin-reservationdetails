@@ -190,20 +190,8 @@ class ReservationRepository {
         $recursos = [];
         $resourceQuery = $this->db->request([
             'SELECT' => ['res.name'],
-            'FROM' => 'glpi_plugin_reservationdetails_reservations AS pres',
+            'FROM' => 'glpi_plugin_reservationdetails_resources_reservationsitems AS link',
             'INNER JOIN' => [
-                'glpi_plugin_reservationdetails_reservations_resources AS pivot' => [
-                    'ON' => [
-                        'pivot' => 'plugin_reservationdetails_reservations_id',
-                        'pres'  => 'id'
-                    ]
-                ],
-                'glpi_plugin_reservationdetails_resources_reservationsitems AS link' => [
-                    'ON' => [
-                        'pivot' => 'plugin_reservationdetails_resources_reservationsitems_id',
-                        'link'  => 'id'
-                    ]
-                ],
                 'glpi_plugin_reservationdetails_resources AS res' => [
                     'ON' => [
                         'link' => 'plugin_reservationdetails_resources_id',
@@ -212,7 +200,7 @@ class ReservationRepository {
                 ]
             ],
             'WHERE' => [
-                'pres.reservations_id' => $reservationId
+                'link.reservations_id' => $reservationId
             ]
         ]);
 

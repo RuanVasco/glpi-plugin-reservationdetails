@@ -82,7 +82,7 @@ class ResourceRepository {
     }
 
     public function linkResourceToReservation(int $resourceId, int $reservationItemId, int $glpiReservationId, ?int $ticketId = null): bool {
-        // Busca o ID correto na tabela de vínculo resource-reservationitem
+        // Find the link record between resource and reservation item
         $linkRecord = $this->db->request([
             'SELECT' => 'id',
             'FROM'   => 'glpi_plugin_reservationdetails_resources_reservationsitems',
@@ -96,31 +96,19 @@ class ResourceRepository {
             return false;
         }
 
-        // Busca o ID do plugin reservation a partir do ID da reserva GLPI nativa
-        $pluginReservation = $this->db->request([
-            'SELECT' => 'id',
-            'FROM'   => 'glpi_plugin_reservationdetails_reservations',
-            'WHERE'  => [
-                'reservations_id' => $glpiReservationId
-            ]
-        ])->current();
-
-        if (!$pluginReservation) {
-            return false;
-        }
-
-        $insertData = [
-            'plugin_reservationdetails_resources_reservationsitems_id' => $linkRecord['id'],
-            'plugin_reservationdetails_reservations_id'                => $pluginReservation['id']
+        // Update the link record with reservation and ticket info
+        $updateData = [
+            'reservations_id' => $glpiReservationId
         ];
         
         if ($ticketId !== null) {
-            $insertData['tickets_id'] = $ticketId;
+            $updateData['tickets_id'] = $ticketId;
         }
 
-        $result = $this->db->insert(
-            'glpi_plugin_reservationdetails_reservations_resources',
-            $insertData
+        $result = $this->db->update(
+            'glpi_plugin_reservationdetails_resources_reservationsitems',
+            $updateData,
+            ['id' => $linkRecord['id']]
         );
 
         return (bool) $result;
@@ -188,30 +176,19 @@ class ResourceRepository {
         $iterator = $this->db->request([
             'SELECT'   => 'context.plugin_reservationdetails_resources_id',
             'DISTINCT' => true,
-            'FROM'     => 'glpi_plugin_reservationdetails_reservations_resources AS pivot',
+            'FROM'     => 'glpi_plugin_reservationdetails_resources_reservationsitems AS context',
             'INNER JOIN' => [
-                'glpi_plugin_reservationdetails_resources_reservationsitems AS context' => [
-                    'ON' => [
-                        'pivot'   => 'plugin_reservationdetails_resources_reservationsitems_id',
-                        'context' => 'id'
-                    ]
-                ],
-                'glpi_plugin_reservationdetails_reservations AS pres' => [
-                    'ON' => [
-                        'pivot' => 'plugin_reservationdetails_reservations_id',
-                        'pres'  => 'id'
-                    ]
-                ],
                 'glpi_reservations AS gres' => [
                     'ON' => [
-                        'pres' => 'reservations_id',
-                        'gres' => 'id'
+                        'context' => 'reservations_id',
+                        'gres'    => 'id'
                     ]
                 ]
             ],
             'WHERE' => [
-                'gres.begin'      => ['<', $end],
-                'gres.end'        => ['>', $start]
+                'context.reservations_id' => ['IS NOT', null],
+                'gres.begin'              => ['<', $end],
+                'gres.end'                => ['>', $start]
             ]
         ]);
 
@@ -254,29 +231,18 @@ class ResourceRepository {
 
         $criteriaUsage = [
             'SELECT' => 'link.plugin_reservationdetails_resources_id AS res_id',
-            'FROM'   => 'glpi_plugin_reservationdetails_reservations_resources AS usage_pivot',
+            'FROM'   => 'glpi_plugin_reservationdetails_resources_reservationsitems AS link',
             'INNER JOIN' => [
-                'glpi_plugin_reservationdetails_resources_reservationsitems AS link' => [
-                    'ON' => [
-                        'usage_pivot' => 'plugin_reservationdetails_resources_reservationsitems_id',
-                        'link'        => 'id'
-                    ]
-                ],
-                'glpi_plugin_reservationdetails_reservations AS plugin_res' => [
-                    'ON' => [
-                        'usage_pivot' => 'plugin_reservationdetails_reservations_id',
-                        'plugin_res'  => 'id'
-                    ]
-                ],
                 'glpi_reservations AS glpi_res' => [
                     'ON' => [
-                        'plugin_res' => 'reservations_id',
-                        'glpi_res'   => 'id'
+                        'link'     => 'reservations_id',
+                        'glpi_res' => 'id'
                     ]
                 ]
             ],
             'WHERE' => [
                 'link.plugin_reservationdetails_resources_id' => array_keys($resources),
+                'link.reservations_id' => ['IS NOT', null],
                 'glpi_res.begin' => ['<', $end],
                 'glpi_res.end'   => ['>', $start]
             ]
@@ -327,31 +293,20 @@ class ResourceRepository {
 
         $result = $this->db->request([
             'COUNT'  => 'total_usage',
-            'FROM'   => 'glpi_plugin_reservationdetails_reservations_resources AS usage_pivot',
+            'FROM'   => 'glpi_plugin_reservationdetails_resources_reservationsitems AS context',
             'INNER JOIN' => [
-                'glpi_plugin_reservationdetails_resources_reservationsitems AS context' => [
-                    'ON' => [
-                        'usage_pivot' => 'plugin_reservationdetails_resources_reservationsitems_id',
-                        'context'     => 'id'
-                    ]
-                ],
-                'glpi_plugin_reservationdetails_reservations AS plugin_res' => [
-                    'ON' => [
-                        'usage_pivot' => 'plugin_reservationdetails_reservations_id',
-                        'plugin_res'  => 'id'
-                    ]
-                ],
                 'glpi_reservations AS glpi_res' => [
                     'ON' => [
-                        'plugin_res' => 'reservations_id',
-                        'glpi_res'   => 'id'
+                        'context'  => 'reservations_id',
+                        'glpi_res' => 'id'
                     ]
                 ]
             ],
             'WHERE' => [
                 'context.plugin_reservationdetails_resources_id' => $resourceId,
-                'glpi_res.begin'      => ['<', $end],
-                'glpi_res.end'        => ['>', $start],
+                'context.reservations_id' => ['IS NOT', null],
+                'glpi_res.begin'          => ['<', $end],
+                'glpi_res.end'            => ['>', $start],
             ]
         ])->current();
 

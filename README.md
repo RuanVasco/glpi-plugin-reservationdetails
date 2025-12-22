@@ -101,9 +101,9 @@ reservationdetails/
 | Table | Description |
 |-------|-------------|
 | glpi_plugin_reservationdetails_resources | Resources (coffee, projectors, etc.) |
-| glpi_plugin_reservationdetails_reservations | Plugin reservation records |
-| glpi_plugin_reservationdetails_resources_reservationsitems | Link between resources and reservation items |
-| glpi_plugin_reservationdetails_reservations_resources | Link between reservations and resources |
+| glpi_plugin_reservationdetails_resources_reservationsitems | Link resources to reservation items + tracks reservations and tickets |
+| glpi_plugin_reservationdetails_customfields | Custom field definitions |
+| glpi_plugin_reservationdetails_customfields_values | Custom field values per reservation |
 
 ## Usage
 

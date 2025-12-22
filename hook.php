@@ -22,45 +22,21 @@ function plugin_reservationdetails_install() {
         $DB->doQueryOrDie($query, $DB->error());
     }
 
-    if (!$DB->tableExists('glpi_plugin_reservationdetails_reservations')) {
-        $query = "CREATE TABLE `glpi_plugin_reservationdetails_reservations` (
-                    `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-                    `people_quantity` INT(11),
-                    `reservations_id` INT(10) UNSIGNED NOT NULL,
-                    PRIMARY KEY (`id`),
-                    KEY `reservations_id` (`reservations_id`),
-                    UNIQUE (`reservations_id`)
-                  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
-        $DB->doQueryOrDie($query, $DB->error());
-    }
-
     if (!$DB->tableExists('glpi_plugin_reservationdetails_resources_reservationsitems')) {
         $query = "CREATE TABLE `glpi_plugin_reservationdetails_resources_reservationsitems` (
                     `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
                     `plugin_reservationdetails_resources_id` INT(11) UNSIGNED NOT NULL,
                     `reservationitems_id` INT(11) UNSIGNED NOT NULL,
+                    `reservations_id` INT(11) UNSIGNED DEFAULT NULL,
+                    `tickets_id` INT(11) UNSIGNED DEFAULT NULL,
                     PRIMARY KEY (`id`),
                     KEY `plugin_reservationdetails_resources_id` (`plugin_reservationdetails_resources_id`),
                     KEY `reservationitems_id` (`reservationitems_id`),
+                    KEY `reservations_id` (`reservations_id`),
+                    KEY `tickets_id` (`tickets_id`),
                     CONSTRAINT `fk_plugin_reservationdetails_resources`
                         FOREIGN KEY (`plugin_reservationdetails_resources_id`)
                         REFERENCES `glpi_plugin_reservationdetails_resources` (`id`)
-                        ON DELETE CASCADE
-                  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
-        $DB->doQueryOrDie($query, $DB->error());
-    }
-
-    if (!$DB->tableExists('glpi_plugin_reservationdetails_reservations_resources')) {
-        $query = "CREATE TABLE `glpi_plugin_reservationdetails_reservations_resources` (
-                    `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-                    `plugin_reservationdetails_resources_reservationsitems_id` INT(11) UNSIGNED NOT NULL,
-                    `plugin_reservationdetails_reservations_id` INT(11) UNSIGNED NOT NULL,
-                    PRIMARY KEY (`id`),
-                    KEY `plugin_reservationdetails_reservations_id` (`plugin_reservationdetails_reservations_id`),
-                    KEY `plugin_reservationdetails_resources_reservationsitems_id` (`plugin_reservationdetails_resources_reservationsitems_id`),
-                    CONSTRAINT `fk_plugin_reservationdetails_resources_reservationsitems`
-                        FOREIGN KEY (`plugin_reservationdetails_resources_reservationsitems_id`)
-                        REFERENCES `glpi_plugin_reservationdetails_resources_reservationsitems` (`id`)
                         ON DELETE CASCADE
                   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
         $DB->doQueryOrDie($query, $DB->error());
@@ -105,12 +81,15 @@ function plugin_reservationdetails_install() {
     // Install profile rights
     Profile::installRights();
 
-    // Add ticket_id column to reservations_resources if not exists (migration)
-    if ($DB->tableExists('glpi_plugin_reservationdetails_reservations_resources')) {
-        if (!$DB->fieldExists('glpi_plugin_reservationdetails_reservations_resources', 'tickets_id')) {
+    // Migration: Add new columns to resources_reservationsitems (simplified structure)
+    if ($DB->tableExists('glpi_plugin_reservationdetails_resources_reservationsitems')) {
+        // Add reservations_id column if not exists
+        if (!$DB->fieldExists('glpi_plugin_reservationdetails_resources_reservationsitems', 'reservations_id')) {
             $DB->doQueryOrDie(
-                "ALTER TABLE `glpi_plugin_reservationdetails_reservations_resources` 
+                "ALTER TABLE `glpi_plugin_reservationdetails_resources_reservationsitems` 
+                 ADD COLUMN `reservations_id` INT(11) UNSIGNED DEFAULT NULL,
                  ADD COLUMN `tickets_id` INT(11) UNSIGNED DEFAULT NULL,
+                 ADD KEY `reservations_id` (`reservations_id`),
                  ADD KEY `tickets_id` (`tickets_id`)",
                 $DB->error()
             );
@@ -141,9 +120,7 @@ function plugin_reservationdetails_uninstall() {
     $tables = [
         'glpi_plugin_reservationdetails_customfields_values',
         'glpi_plugin_reservationdetails_customfields',
-        'glpi_plugin_reservationdetails_reservations_resources',
         'glpi_plugin_reservationdetails_resources_reservationsitems',
-        'glpi_plugin_reservationdetails_reservations',
         'glpi_plugin_reservationdetails_resources'
     ];
 
@@ -161,18 +138,38 @@ function plugin_reservationdetails_uninstall() {
 
 function plugin_reservationdetails_additem_called(CommonDBTM $item) {
     if ($item::getType() == \Reservation::class) {
-        $obj = new Reservation;
+        global $DB;
+        
         $found = false;
+        $resourcesWithTicket = [];
+        $allResources = [];
 
+        // Collect all resources from POST
         foreach (array_keys($_POST) as $key) {
             if (strpos($key, 'resource_id_') === 0) {
                 $found = true;
-                break;
+                $parts = explode('_', $key);
+                $resourceId = (int)$parts[2];
+                $allResources[] = $resourceId;
+                
+                // Check if this resource has ticket_entities_id
+                $resource = $DB->request([
+                    'SELECT' => ['name', 'ticket_entities_id'],
+                    'FROM'   => 'glpi_plugin_reservationdetails_resources',
+                    'WHERE'  => ['id' => $resourceId]
+                ])->current();
+                
+                if ($resource && !empty($resource['ticket_entities_id'])) {
+                    $resourcesWithTicket[] = [
+                        'id' => $resourceId,
+                        'name' => $resource['name'],
+                        'ticket_entities_id' => $resource['ticket_entities_id']
+                    ];
+                }
             }
         }
 
         // Check if this is a bulk/recurring reservation
-        // Bulk reservations have periodicity[type] set to something other than empty
         $isBulk = false;
         if (isset($_POST['periodicity']) && is_array($_POST['periodicity'])) {
             $isBulk = !empty($_POST['periodicity']['type']);
@@ -180,28 +177,64 @@ function plugin_reservationdetails_additem_called(CommonDBTM $item) {
 
         if (!$found) {
             // No resources selected - redirect to resource form
-            // But skip redirect for bulk reservations to not break the flow
             if (!$isBulk) {
+                $obj = new Reservation;
                 Html::redirect($obj->getFormURLWithID($item->getID()));
             }
         } else {
-            // Resources were selected
-            $_POST['reservations_id'] = $item->fields['id'];
+            $reservationId = $item->fields['id'];
+            $ticketId = null;
+            
+            // Create ONE ticket for the reservation if any resource requires it
+            if (!empty($resourcesWithTicket)) {
+                $firstResource = $resourcesWithTicket[0];
+                $resourceNames = array_map(fn($r) => $r['name'], $resourcesWithTicket);
+                
+                // Get reservation details
+                $reservation = new \Reservation();
+                $reservation->getFromDB($reservationId);
+                $reservationItem = new \ReservationItem();
+                $reservationItem->getFromDB($reservation->fields['reservationitems_id']);
+                
+                $itemName = '';
+                if (!empty($reservationItem->fields['itemtype'])) {
+                    $itemClass = $reservationItem->fields['itemtype'];
+                    $linkedItem = new $itemClass();
+                    if ($linkedItem->getFromDB($reservationItem->fields['items_id'])) {
+                        $itemName = $linkedItem->getName();
+                    }
+                }
+                
+                $ticket = [
+                    'entities_id'     => $firstResource['ticket_entities_id'],
+                    'name'            => 'Reserva: ' . $itemName,
+                    'content'         => sprintf(
+                        "Reserva criada.\n\nLocal: %s\nData: %s até %s\nRecursos: %s",
+                        $itemName,
+                        $reservation->fields['begin'] ?? '',
+                        $reservation->fields['end'] ?? '',
+                        implode(', ', $resourceNames)
+                    ),
+                    'date'            => date('Y-m-d H:i:s'),
+                    'requesttypes_id' => 1,
+                    'status'          => 1
+                ];
 
-            foreach ($_POST as $i => $key) {
-                if (strpos($i, 'resource_id_') !== false) {
-                    $parts = explode('_', $i);
-                    $resourceID = $parts[2];
-                    
-                    // For bulk reservations, use silent mode (warnings instead of errors)
-                    Resource::create($resourceID, $_POST['reservations_id'], $isBulk);
+                $track = new \Ticket();
+                $ticketId = $track->add($ticket);
+                
+                if ($ticketId) {
+                    \Session::addMessageAfterRedirect(
+                        sprintf(__("Chamado #%d criado para a reserva."), $ticketId),
+                        true,
+                        INFO
+                    );
                 }
             }
-
-            // Only add plugin reservation record for single reservations
-            if (!$isBulk) {
-                $obj->check(-1, CREATE, $_POST);
-                $obj->add($_POST);
+            
+            // Link each resource to the reservation
+            foreach ($allResources as $resourceId) {
+                Resource::create($resourceId, $reservationId, $isBulk, $ticketId);
             }
         }
     }
@@ -222,37 +255,29 @@ function plugin_reservationdetails_purgeitem_called(CommonDBTM $item) {
         
         $reservationId = $item->getID();
         
-        // Find the plugin reservation record
-        $pluginReservation = $DB->request([
-            'SELECT' => 'id',
-            'FROM'   => 'glpi_plugin_reservationdetails_reservations',
-            'WHERE'  => ['reservations_id' => $reservationId]
-        ])->current();
-        
-        if (!$pluginReservation) {
-            return;
-        }
-        
-        // Find associated tickets
+        // Find associated tickets from resources_reservationsitems
         $tickets = $DB->request([
-            'SELECT' => 'tickets_id',
-            'FROM'   => 'glpi_plugin_reservationdetails_reservations_resources',
+            'SELECT' => ['id', 'tickets_id'],
+            'FROM'   => 'glpi_plugin_reservationdetails_resources_reservationsitems',
             'WHERE'  => [
-                'plugin_reservationdetails_reservations_id' => $pluginReservation['id'],
+                'reservations_id' => $reservationId,
                 'tickets_id' => ['>', 0]
             ]
         ]);
         
+        $solvedTickets = [];
         foreach ($tickets as $row) {
-            if (!empty($row['tickets_id'])) {
+            if (!empty($row['tickets_id']) && !in_array($row['tickets_id'], $solvedTickets)) {
                 $ticket = new \Ticket();
                 if ($ticket->getFromDB($row['tickets_id'])) {
-                    // Solve the ticket (status 5 = Solved in GLPI)
+                    // Solve the ticket
                     $ticket->update([
                         'id'     => $row['tickets_id'],
                         'status' => \CommonITILObject::SOLVED,
                         'solution' => 'Reserva cancelada/excluída pelo sistema.'
                     ]);
+                    
+                    $solvedTickets[] = $row['tickets_id'];
                     
                     \Session::addMessageAfterRedirect(
                         sprintf(__("Chamado #%d solucionado automaticamente."), $row['tickets_id']),
@@ -263,8 +288,11 @@ function plugin_reservationdetails_purgeitem_called(CommonDBTM $item) {
             }
         }
         
-        // Clean up plugin data (cascade will handle resources relationship)
-        $DB->delete('glpi_plugin_reservationdetails_reservations', [
+        // Clear the reservation reference from resources_reservationsitems (don't delete - preserve resource link)
+        $DB->update('glpi_plugin_reservationdetails_resources_reservationsitems', [
+            'reservations_id' => null,
+            'tickets_id' => null
+        ], [
             'reservations_id' => $reservationId
         ]);
     }

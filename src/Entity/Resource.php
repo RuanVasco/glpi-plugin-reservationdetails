@@ -112,7 +112,7 @@ class Resource extends CommonDropdown {
         return $response;
     }
 
-    public static function create(int $idResource, int $idReservation, bool $silentOnConflict = false): bool {
+    public static function create(int $idResource, int $idReservation, bool $silentOnConflict = false, ?int $ticketId = null): bool {
         global $DB;
 
         $resourceRepository    = new ResourceRepository($DB);
@@ -160,30 +160,7 @@ class Resource extends CommonDropdown {
         $isAvailable = $resourceRepository->getAvailabilityResource($idResource, $reservationBegin, $reservationEnd);
 
         if ($isAvailable) {
-
-            $ticketId = null;
-            if (!empty($resourceData['ticket_entities_id'])) {
-
-                $roomName = $reservationRepository->getReservationItemName($reservationRoomId);
-
-                $ticket = [
-                    'entities_id'     => $resourceData['ticket_entities_id'],
-                    'name'            => 'Reserva de Recurso: ' . $resourceData['name'],
-                    'content'         => sprintf(
-                        "Reserva solicitada para o recurso: %s\nData: %s\nLocal: %s",
-                        $resourceData['name'],
-                        $reservationBegin,
-                        $roomName
-                    ),
-                    'date'            => date('Y-m-d H:i:s'),
-                    'requesttypes_id' => 1,
-                    'status'          => 1
-                ];
-
-                $track = new \Ticket();
-                $ticketId = $track->add($ticket);
-            }
-
+            // Link resource to reservation (ticketId is passed from hook, not created here)
             $resourceRepository->linkResourceToReservation($idResource, $reservationRoomId, $idReservation, $ticketId);
 
             return true;
