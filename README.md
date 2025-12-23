@@ -1,6 +1,6 @@
 # GLPI Plugin - Reservation Details
 
-Plugin for GLPI that adds contextual fields to the asset reservation form, including resource management with stock control and profile-based reservation permissions.
+Plugin for GLPI that adds contextual fields to the asset reservation form, including resource management with stock control and profile-based reservation permissions per individual item.
 
 ## Requirements
 
@@ -22,11 +22,13 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 - Multiple field types: text, textarea, dropdown, checkbox, date
 - Fields are displayed in the reservation form
 
-### Reservation Permissions by Asset Type
-- Restrict which profiles can reserve specific asset types
+### Reservation Permissions by Item
+- Restrict which profiles can reserve **specific individual items**
 - Configuration via Setup > Dropdowns > Reservation Details > Permissões de Reserva
-- Items with restrictions are hidden from unauthorized users
+- See all reservable items with their allowed profiles
+- Edit permissions per item with multi-select profile picker
 - Empty restrictions = all profiles can reserve
+- Unauthorized users are blocked when attempting to create reservations
 
 ### Reservations View Tab
 - View all reservations with associated resources
@@ -38,6 +40,7 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 - Granular permissions per profile
 - Resource management rights: Read, Create, Update, Delete, Purge
 - Custom Fields rights: Read, Create, Update, Delete, Purge
+- Reservation Permissions rights: Read, Update
 - Reservation view rights: Read, Create
 - Configure in Administration > Profiles > Reservation Details tab
 
@@ -52,7 +55,7 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 
 ### Creating Resources
 
-1. Go to Setup > Dropdowns > Resources
+1. Go to Setup > Dropdowns > Reservation Details > Resources
 2. Click Add
 3. Fill in the resource name
 4. Set stock quantity (optional - leave empty for unlimited)
@@ -61,7 +64,7 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 
 ### Creating Custom Fields
 
-1. Go to Setup > Dropdowns > Custom Fields
+1. Go to Setup > Dropdowns > Reservation Details > Custom Fields
 2. Click Add
 3. Set field name, type, and options
 4. Fields will appear in the reservation form
@@ -69,9 +72,9 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 ### Configuring Reservation Permissions
 
 1. Go to Setup > Dropdowns > Reservation Details > Permissões de Reserva
-2. You'll see all reservable asset types
-3. Click "Editar" to configure which profiles can reserve each type
-4. Select the allowed profiles (leave empty for all)
+2. You'll see all reservable items listed with their type and name
+3. Click "Editar" to configure which profiles can reserve each item
+4. Select the allowed profiles (leave empty to allow all)
 5. Click "Salvar"
 
 ### Configuring Profile Permissions
@@ -79,7 +82,7 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 1. Go to Administration > Profiles
 2. Select the desired profile
 3. Click on the "Reservation Details" tab
-4. Configure rights for Resources, Custom Fields, and Reservations
+4. Configure rights for Resources, Custom Fields, Permissões de Reserva, and Reservations
 
 ### Permission Levels
 
@@ -87,7 +90,7 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 |--------------|----------------------|
 | Super-Admin  | Full access to all features |
 | Reception    | Read, Create, Update resources; Read reservations |
-| Self-Service | No resource management; Can only reserve |
+| Self-Service | No resource management; Can only reserve allowed items |
 
 ## File Structure
 
@@ -99,7 +102,8 @@ reservationdetails/
 ├── front/
 │   ├── customfield.form.php
 │   ├── customfield.php
-│   ├── itemtype_permissions.php
+│   ├── item_permissions.form.php
+│   ├── item_permissions.php
 │   ├── reservation.form.php
 │   ├── reservation.php
 │   ├── reservations.php
@@ -118,7 +122,10 @@ reservationdetails/
 │   │   └── ResourceRepository.php
 │   └── Utils.php
 ├── templates/
+│   ├── components/
+│   │   └── macro.html.twig
 │   ├── form_recourse_after_add.html.twig
+│   ├── item_permissions_form.html.twig
 │   ├── reservations_list.html.twig
 │   └── resource_form.html.twig
 ├── hook.php
@@ -133,14 +140,14 @@ reservationdetails/
 | glpi_plugin_reservationdetails_resources_reservationsitems | Link resources to reservation items + tracks reservations and tickets |
 | glpi_plugin_reservationdetails_customfields | Custom field definitions |
 | glpi_plugin_reservationdetails_customfields_values | Custom field values per reservation |
-| glpi_plugin_reservationdetails_itemtypes_profiles | Profile permissions per asset type |
+| glpi_plugin_reservationdetails_items_profiles | Profile permissions per individual reservation item |
 
 ## Usage
 
 ### Making a Reservation with Resources
 
 1. Create a reservation in GLPI as usual
-2. After saving, the plugin form appears
+2. After saving, the plugin form appears (if resources are linked)
 3. Select the desired resources (unavailable ones are disabled)
 4. Click Add
 
@@ -152,12 +159,12 @@ reservationdetails/
 4. Use the search box to find specific reservations
 5. Click the eye icon to view reservation details
 
-### Configuring Asset Type Restrictions
+### Configuring Item Restrictions
 
 1. Go to Setup > Dropdowns > Reservation Details > Permissões de Reserva
-2. Click "Editar" on the asset type you want to restrict
-3. Select which profiles can reserve this type
-4. Save - restricted users won't see these items
+2. Click "Editar" on the item you want to restrict
+3. Select which profiles can reserve this specific item
+4. Save - restricted users will be blocked when trying to reserve
 
 ## License
 
