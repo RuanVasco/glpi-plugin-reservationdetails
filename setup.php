@@ -38,13 +38,10 @@ function plugin_init_reservationdetails() {
     // Register reservations view tab on ReservationItem
     Plugin::registerClass(ReservationView::class, ['addtabon' => ['ReservationItem']]);
 
+    // ItemPermission is accessible via dropdown menu
+
     // Reload rights when profile changes
     $PLUGIN_HOOKS['change_profile']['reservationdetails'] = 'plugin_reservationdetails_changeprofile';
-
-    // Filter reservation items based on profile permissions
-    $PLUGIN_HOOKS['item_can']['reservationdetails'] = [
-        'ReservationItem' => 'plugin_reservationdetails_item_can'
-    ];
 }
 
 function plugin_version_reservationdetails() {
@@ -70,9 +67,9 @@ function plugin_reservationdetails_check_prerequisites() {
 
 function plugin_reservationdetails_getDropdown() {
     return [
-        'GlpiPlugin\Reservationdetails\Entity\Resource' => 'Reservation Details > ' . Resource::getTypeName(2),
-        'GlpiPlugin\Reservationdetails\Entity\CustomField' => 'Reservation Details > ' . CustomField::getTypeName(2),
-        'GlpiPlugin\Reservationdetails\Entity\ItemPermission' => 'Reservation Details > ' . ItemPermission::getTypeName(2)
+        'GlpiPlugin\\Reservationdetails\\Entity\\Resource' => 'Reservation Details > ' . Resource::getTypeName(2),
+        'GlpiPlugin\\Reservationdetails\\Entity\\CustomField' => 'Reservation Details > ' . CustomField::getTypeName(2),
+        'GlpiPlugin\\Reservationdetails\\Entity\\ItemPermission' => 'Reservation Details > ' . ItemPermission::getTypeName(2)
     ];
 }
 

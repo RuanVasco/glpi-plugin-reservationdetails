@@ -79,16 +79,16 @@ function plugin_reservationdetails_install() {
         $DB->doQueryOrDie($query, $DB->error());
     }
 
-    // Asset type permissions - which profiles can reserve which asset types
-    if (!$DB->tableExists('glpi_plugin_reservationdetails_itemtypes_profiles')) {
-        $query = "CREATE TABLE `glpi_plugin_reservationdetails_itemtypes_profiles` (
+    // Item permissions - which profiles can reserve which specific items
+    if (!$DB->tableExists('glpi_plugin_reservationdetails_items_profiles')) {
+        $query = "CREATE TABLE `glpi_plugin_reservationdetails_items_profiles` (
                     `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-                    `itemtype` VARCHAR(100) NOT NULL,
+                    `reservationitems_id` INT(11) UNSIGNED NOT NULL,
                     `profiles_id` INT(11) UNSIGNED NOT NULL,
                     PRIMARY KEY (`id`),
-                    KEY `itemtype` (`itemtype`),
+                    KEY `reservationitems_id` (`reservationitems_id`),
                     KEY `profiles_id` (`profiles_id`),
-                    UNIQUE KEY `itemtype_profile` (`itemtype`, `profiles_id`)
+                    UNIQUE KEY `item_profile` (`reservationitems_id`, `profiles_id`)
                   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
         $DB->doQueryOrDie($query, $DB->error());
     }
@@ -133,7 +133,7 @@ function plugin_reservationdetails_uninstall() {
     global $DB;
 
     $tables = [
-        'glpi_plugin_reservationdetails_itemtypes_profiles',
+        'glpi_plugin_reservationdetails_items_profiles',
         'glpi_plugin_reservationdetails_customfields_values',
         'glpi_plugin_reservationdetails_customfields',
         'glpi_plugin_reservationdetails_resources_reservationsitems',
@@ -153,27 +153,6 @@ function plugin_reservationdetails_uninstall() {
 }
 
 /**
- * Item can hook: Filter ReservationItem list to hide restricted itemtypes
- * This hook is called during Search::addDefaultWhere when add_where is used
- */
-function plugin_reservationdetails_item_can(CommonDBTM $item) {
-    // Get list of itemtypes that user cannot reserve
-    $restrictedItemtypes = ItemPermission::getRestrictedItemtypesForUser();
-    
-    if (!empty($restrictedItemtypes)) {
-        // Build WHERE clause to exclude restricted itemtypes
-        $excluded = [];
-        foreach ($restrictedItemtypes as $itemtype) {
-            $excluded[] = "'" . addslashes($itemtype) . "'";
-        }
-        $excludeClause = "glpi_reservationitems.itemtype NOT IN (" . implode(',', $excluded) . ")";
-        
-        // Set add_where to filter search results
-        $item->add_where = $excludeClause;
-    }
-}
-
-/**
  * Pre-add hook: Check permissions BEFORE reservation is created
  * Returns false to block reservation creation
  */
@@ -182,20 +161,16 @@ function plugin_reservationdetails_preadditem_called(CommonDBTM $item) {
         $reservationItemId = $item->input['reservationitems_id'] ?? 0;
         
         if ($reservationItemId > 0) {
-            $reservationItem = new \ReservationItem();
-            if ($reservationItem->getFromDB($reservationItemId)) {
-                $itemtype = $reservationItem->fields['itemtype'];
-                
-                if (!ItemPermission::canUserReserveItemtype($itemtype)) {
-                    \Session::addMessageAfterRedirect(
-                        __('Seu perfil não tem permissão para reservar este tipo de item.'),
-                        false,
-                        ERROR
-                    );
-                    // Block creation by setting input to false
-                    $item->input = false;
-                    return false;
-                }
+            // Check if user can reserve this specific item
+            if (!ItemPermission::canUserReserveItem($reservationItemId)) {
+                \Session::addMessageAfterRedirect(
+                    __('Seu perfil não tem permissão para reservar este item.'),
+                    false,
+                    ERROR
+                );
+                // Block creation by setting input to false
+                $item->input = false;
+                return false;
             }
         }
     }
@@ -242,11 +217,9 @@ function plugin_reservationdetails_additem_called(CommonDBTM $item) {
         }
 
         if (!$found) {
-            // No resources selected - redirect to resource form
-            if (!$isBulk) {
-                $obj = new Reservation;
-                Html::redirect($obj->getFormURLWithID($item->getID()));
-            }
+            // No resources selected - no redirect needed, just continue normally
+            // The reservation was already created, user can add resources later if needed
+            return;
         } else {
             $reservationId = $item->fields['id'];
             $ticketId = null;

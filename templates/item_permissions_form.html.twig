@@ -1,0 +1,99 @@
+{% import "components/form/fields_macros.html.twig" as fields %}
+
+<div class="center">
+    <h2><i class="fas fa-lock"></i> {{ __('Permissões de Reserva por Item') }}</h2>
+    <p class="text-muted">{{ __('Configure quais perfis podem reservar cada item. Deixe vazio para permitir todos os perfis.') }}</p>
+
+    {% if reservable_items is empty %}
+        <div class="alert alert-info">{{ __('Nenhum item reservável encontrado.') }}</div>
+    {% else %}
+        <table class="tab_cadre_fixe">
+            <thead>
+                <tr class="tab_bg_1">
+                    <th>{{ __('Tipo') }}</th>
+                    <th>{{ __('Item') }}</th>
+                    <th>{{ __('Perfis Permitidos') }}</th>
+                    {% if can_edit %}
+                        <th>{{ __('Ações') }}</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in reservable_items %}
+                    <tr class="tab_bg_1">
+                        <td>{{ item.type }}</td>
+                        <td>{{ item.name }}</td>
+                        <td>
+                            {% if item.profiles is empty %}
+                                <span class="badge bg-success">{{ __('Todos os perfis') }}</span>
+                            {% else %}
+                                {% for profile_id in item.profiles %}
+                                    {% if profiles[profile_id] is defined %}
+                                        <span class="badge bg-primary me-1">{{ profiles[profile_id] }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        {% if can_edit %}
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                        onclick="openPermissionModal({{ item.id }}, '{{ item.type|e('js') }}', '{{ item.name|e('js') }}', {{ item.profiles|json_encode }})">
+                                    <i class="fas fa-edit"></i> {{ __('Editar') }}
+                                </button>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+
+{% if can_edit %}
+    {# Modal for editing permissions #}
+    <div id="permissionModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('Editar Permissões') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{{ itemtype.getFormURL() }}">
+                    <input type="hidden" name="reservationitems_id" id="modal_reservationitems_id" value="">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <div class="modal-body">
+                        <p id="modal_item_name"></p>
+                        <label for="modal_profiles" class="form-label">{{ __('Perfis Permitidos') }}</label>
+                        <select name="profiles_ids[]" id="modal_profiles" multiple class="form-select" style="height: 200px;">
+                            {% for id, name in profiles %}
+                                <option value="{{ id }}">{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">{{ __('Segure Ctrl para selecionar múltiplos. Deixe vazio para permitir todos.') }}</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
+                        <button type="submit" name="save" class="btn btn-primary">{{ __('Salvar') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openPermissionModal(itemId, itemType, itemName, currentProfiles) {
+        document.getElementById('modal_reservationitems_id').value = itemId;
+        document.getElementById('modal_item_name').innerHTML = '<strong>' + itemType + ':</strong> ' + itemName;
+        
+        // Reset and set selected profiles
+        var select = document.getElementById('modal_profiles');
+        for (var i = 0; i < select.options.length; i++) {
+            select.options[i].selected = currentProfiles.includes(parseInt(select.options[i].value));
+        }
+        
+        // Show modal using Bootstrap 5
+        var modal = new bootstrap.Modal(document.getElementById('permissionModal'));
+        modal.show();
+    }
+    </script>
+{% endif %}

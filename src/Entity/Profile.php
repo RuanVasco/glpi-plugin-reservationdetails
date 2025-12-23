@@ -57,6 +57,15 @@ class Profile extends CommonGLPI {
                     DELETE  => __('Delete'),
                     PURGE   => __('Delete permanently')
                 ]
+            ],
+            [
+                'itemtype'  => ItemPermission::class,
+                'label'     => __('Permissões de Reserva'),
+                'field'     => ItemPermission::$rightname,
+                'rights'    => [
+                    READ    => __('Read'),
+                    UPDATE  => __('Update')
+                ]
             ]
         ];
     }
