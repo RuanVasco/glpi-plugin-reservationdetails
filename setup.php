@@ -4,8 +4,10 @@ use GlpiPlugin\Reservationdetails\Entity\Resource;
 use GlpiPlugin\Reservationdetails\Entity\Profile;
 use GlpiPlugin\Reservationdetails\Entity\ReservationView;
 use GlpiPlugin\Reservationdetails\Entity\CustomField;
+use GlpiPlugin\Reservationdetails\Entity\ItemPermission;
 
 define('PLUGIN_RESERVATIONDETAILS_VERSION', '0.1.0');
+define('PLUGIN_RESERVATIONDETAILS_WEBDIR', Plugin::getWebDir('reservationdetails', true));
 
 function plugin_init_reservationdetails() {
     global $PLUGIN_HOOKS;
@@ -15,6 +17,11 @@ function plugin_init_reservationdetails() {
 
     $PLUGIN_HOOKS['item_add']['reservationdetails'] = [
         'Reservation' => 'plugin_reservationdetails_additem_called'
+    ];
+
+    // Block reservation creation if user doesn't have permission
+    $PLUGIN_HOOKS['pre_item_add']['reservationdetails'] = [
+        'Reservation' => 'plugin_reservationdetails_preadditem_called'
     ];
 
     $PLUGIN_HOOKS['item_purge']['reservationdetails'] = [
@@ -34,10 +41,10 @@ function plugin_init_reservationdetails() {
     // Reload rights when profile changes
     $PLUGIN_HOOKS['change_profile']['reservationdetails'] = 'plugin_reservationdetails_changeprofile';
 
-    // Add config menu for Custom Fields
-    if (Session::haveRight('config', READ)) {
-        $PLUGIN_HOOKS['config_page']['reservationdetails'] = 'front/customfield.php';
-    }
+    // Filter reservation items based on profile permissions
+    $PLUGIN_HOOKS['item_can']['reservationdetails'] = [
+        'ReservationItem' => 'plugin_reservationdetails_item_can'
+    ];
 }
 
 function plugin_version_reservationdetails() {
@@ -64,7 +71,8 @@ function plugin_reservationdetails_check_prerequisites() {
 function plugin_reservationdetails_getDropdown() {
     return [
         'GlpiPlugin\Reservationdetails\Entity\Resource' => 'Reservation Details > ' . Resource::getTypeName(2),
-        'GlpiPlugin\Reservationdetails\Entity\CustomField' => 'Reservation Details > ' . CustomField::getTypeName(2)
+        'GlpiPlugin\Reservationdetails\Entity\CustomField' => 'Reservation Details > ' . CustomField::getTypeName(2),
+        'GlpiPlugin\Reservationdetails\Entity\ItemPermission' => 'Reservation Details > ' . ItemPermission::getTypeName(2)
     ];
 }
 

@@ -1,6 +1,6 @@
 # GLPI Plugin - Reservation Details
 
-Plugin for GLPI that adds contextual fields to the asset reservation form, including resource management with stock control.
+Plugin for GLPI that adds contextual fields to the asset reservation form, including resource management with stock control and profile-based reservation permissions.
 
 ## Requirements
 
@@ -15,20 +15,29 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 - Stock control per resource with availability checking
 - Link resources to reservation items (rooms, equipment)
 - Automatic unavailability detection when stock is exhausted
+- Automatic ticket creation when resources are requested
 
-### Reservation Integration
-- Additional form after creating a reservation to select resources
-- Visual indicators for unavailable resources (clock icon and disabled checkbox)
-- Prevent overbooking based on stock limits
+### Custom Fields
+- Create custom fields for reservations
+- Multiple field types: text, textarea, dropdown, checkbox, date
+- Fields are displayed in the reservation form
+
+### Reservation Permissions by Asset Type
+- Restrict which profiles can reserve specific asset types
+- Configuration via Setup > Dropdowns > Reservation Details > Permissões de Reserva
+- Items with restrictions are hidden from unauthorized users
+- Empty restrictions = all profiles can reserve
 
 ### Reservations View Tab
 - View all reservations with associated resources
 - Filter between open and closed reservations
+- Search by item name, user, or date
 - Modal with reservation details including user, item, dates, and resources
 
 ### Permission System
 - Granular permissions per profile
 - Resource management rights: Read, Create, Update, Delete, Purge
+- Custom Fields rights: Read, Create, Update, Delete, Purge
 - Reservation view rights: Read, Create
 - Configure in Administration > Profiles > Reservation Details tab
 
@@ -50,12 +59,27 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 5. Select which reservation items can use this resource
 6. Optionally configure ticket creation for resource requests
 
-### Configuring Permissions
+### Creating Custom Fields
+
+1. Go to Setup > Dropdowns > Custom Fields
+2. Click Add
+3. Set field name, type, and options
+4. Fields will appear in the reservation form
+
+### Configuring Reservation Permissions
+
+1. Go to Setup > Dropdowns > Reservation Details > Permissões de Reserva
+2. You'll see all reservable asset types
+3. Click "Editar" to configure which profiles can reserve each type
+4. Select the allowed profiles (leave empty for all)
+5. Click "Salvar"
+
+### Configuring Profile Permissions
 
 1. Go to Administration > Profiles
 2. Select the desired profile
 3. Click on the "Reservation Details" tab
-4. Configure rights for Resources and Reservations
+4. Configure rights for Resources, Custom Fields, and Reservations
 
 ### Permission Levels
 
@@ -73,6 +97,9 @@ reservationdetails/
 │   ├── entities.php
 │   └── reservations.php
 ├── front/
+│   ├── customfield.form.php
+│   ├── customfield.php
+│   ├── itemtype_permissions.php
 │   ├── reservation.form.php
 │   ├── reservation.php
 │   ├── reservations.php
@@ -80,6 +107,8 @@ reservationdetails/
 │   └── resource.php
 ├── src/
 │   ├── Entity/
+│   │   ├── CustomField.php
+│   │   ├── ItemPermission.php
 │   │   ├── Profile.php
 │   │   ├── Reservation.php
 │   │   ├── ReservationView.php
@@ -104,6 +133,7 @@ reservationdetails/
 | glpi_plugin_reservationdetails_resources_reservationsitems | Link resources to reservation items + tracks reservations and tickets |
 | glpi_plugin_reservationdetails_customfields | Custom field definitions |
 | glpi_plugin_reservationdetails_customfields_values | Custom field values per reservation |
+| glpi_plugin_reservationdetails_itemtypes_profiles | Profile permissions per asset type |
 
 ## Usage
 
@@ -119,7 +149,15 @@ reservationdetails/
 1. Go to Tools > Reservations
 2. Click on the "Visualizar Reservas" tab
 3. Use the dropdown to filter between open and closed reservations
-4. Click the eye icon to view reservation details
+4. Use the search box to find specific reservations
+5. Click the eye icon to view reservation details
+
+### Configuring Asset Type Restrictions
+
+1. Go to Setup > Dropdowns > Reservation Details > Permissões de Reserva
+2. Click "Editar" on the asset type you want to restrict
+3. Select which profiles can reserve this type
+4. Save - restricted users won't see these items
 
 ## License
 

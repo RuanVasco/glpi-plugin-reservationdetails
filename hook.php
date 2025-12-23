@@ -3,6 +3,7 @@
 use GlpiPlugin\Reservationdetails\Entity\Reservation;
 use GlpiPlugin\Reservationdetails\Entity\Resource;
 use GlpiPlugin\Reservationdetails\Entity\Profile;
+use GlpiPlugin\Reservationdetails\Entity\ItemPermission;
 
 function plugin_reservationdetails_install() {
     global $DB;
@@ -78,6 +79,20 @@ function plugin_reservationdetails_install() {
         $DB->doQueryOrDie($query, $DB->error());
     }
 
+    // Asset type permissions - which profiles can reserve which asset types
+    if (!$DB->tableExists('glpi_plugin_reservationdetails_itemtypes_profiles')) {
+        $query = "CREATE TABLE `glpi_plugin_reservationdetails_itemtypes_profiles` (
+                    `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `itemtype` VARCHAR(100) NOT NULL,
+                    `profiles_id` INT(11) UNSIGNED NOT NULL,
+                    PRIMARY KEY (`id`),
+                    KEY `itemtype` (`itemtype`),
+                    KEY `profiles_id` (`profiles_id`),
+                    UNIQUE KEY `itemtype_profile` (`itemtype`, `profiles_id`)
+                  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC";
+        $DB->doQueryOrDie($query, $DB->error());
+    }
+
     // Install profile rights
     Profile::installRights();
 
@@ -118,6 +133,7 @@ function plugin_reservationdetails_uninstall() {
     global $DB;
 
     $tables = [
+        'glpi_plugin_reservationdetails_itemtypes_profiles',
         'glpi_plugin_reservationdetails_customfields_values',
         'glpi_plugin_reservationdetails_customfields',
         'glpi_plugin_reservationdetails_resources_reservationsitems',
@@ -133,6 +149,56 @@ function plugin_reservationdetails_uninstall() {
     // Remove profile rights
     Profile::uninstallRights();
 
+    return true;
+}
+
+/**
+ * Item can hook: Filter ReservationItem list to hide restricted itemtypes
+ * This hook is called during Search::addDefaultWhere when add_where is used
+ */
+function plugin_reservationdetails_item_can(CommonDBTM $item) {
+    // Get list of itemtypes that user cannot reserve
+    $restrictedItemtypes = ItemPermission::getRestrictedItemtypesForUser();
+    
+    if (!empty($restrictedItemtypes)) {
+        // Build WHERE clause to exclude restricted itemtypes
+        $excluded = [];
+        foreach ($restrictedItemtypes as $itemtype) {
+            $excluded[] = "'" . addslashes($itemtype) . "'";
+        }
+        $excludeClause = "glpi_reservationitems.itemtype NOT IN (" . implode(',', $excluded) . ")";
+        
+        // Set add_where to filter search results
+        $item->add_where = $excludeClause;
+    }
+}
+
+/**
+ * Pre-add hook: Check permissions BEFORE reservation is created
+ * Returns false to block reservation creation
+ */
+function plugin_reservationdetails_preadditem_called(CommonDBTM $item) {
+    if ($item::getType() == \Reservation::class) {
+        $reservationItemId = $item->input['reservationitems_id'] ?? 0;
+        
+        if ($reservationItemId > 0) {
+            $reservationItem = new \ReservationItem();
+            if ($reservationItem->getFromDB($reservationItemId)) {
+                $itemtype = $reservationItem->fields['itemtype'];
+                
+                if (!ItemPermission::canUserReserveItemtype($itemtype)) {
+                    \Session::addMessageAfterRedirect(
+                        __('Seu perfil não tem permissão para reservar este tipo de item.'),
+                        false,
+                        ERROR
+                    );
+                    // Block creation by setting input to false
+                    $item->input = false;
+                    return false;
+                }
+            }
+        }
+    }
     return true;
 }
 
