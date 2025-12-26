@@ -38,6 +38,18 @@ function plugin_init_reservationdetails() {
     // Register reservations view tab on ReservationItem
     Plugin::registerClass(ReservationView::class, ['addtabon' => ['ReservationItem']]);
 
+    // Add "Minhas Reservas" menu to helpdesk interface
+    if (Session::getLoginUserID()) {
+        $PLUGIN_HOOKS['menu_toadd']['reservationdetails'] = [
+            'helpdesk' => ['GlpiPlugin\Reservationdetails\Entity\MyReservations']
+        ];
+        
+        // Add JavaScript for "Minhas Reservas" button on reservation page - ONLY in helpdesk interface
+        if (Session::getCurrentInterface() === 'helpdesk') {
+            $PLUGIN_HOOKS['add_javascript']['reservationdetails'][] = 'public/js/reservation_button.js';
+        }
+    }
+
     // ItemPermission is accessible via dropdown menu
 
     // Reload rights when profile changes

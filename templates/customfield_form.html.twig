@@ -58,7 +58,8 @@
                             'text': 'Text',
                             'number': 'Number',
                             'textarea': 'Text Area',
-                            'dropdown': 'Dropdown'
+                            'dropdown': 'Dropdown',
+                            'file': 'File Upload'
                         },
                         __('Field Type'),
                         {}
@@ -99,6 +100,19 @@
                     ) }}
                 </div>
             </div>
+
+            <div class="row" id="allowed_extensions_row">
+                <div class="col-12">
+                    {{ fields.textField(
+                        'allowed_extensions',
+                        item.fields.allowed_extensions ?? '',
+                        __('Allowed Extensions'),
+                        {
+                            'helper': 'Comma-separated list of allowed file extensions (e.g., jpg,png,pdf). Leave empty to allow all file types.'
+                        }
+                    ) }}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -123,15 +137,25 @@
 
 <script>
 $(document).ready(function() {
-    function toggleDropdownValues() {
-        if ($('select[name="field_type"]').val() === 'dropdown') {
+    function toggleFieldTypeOptions() {
+        var fieldType = $('select[name="field_type"]').val();
+        
+        // Show dropdown values only for dropdown type
+        if (fieldType === 'dropdown') {
             $('#dropdown_values_row').show();
         } else {
             $('#dropdown_values_row').hide();
         }
+        
+        // Show allowed extensions only for file type
+        if (fieldType === 'file') {
+            $('#allowed_extensions_row').show();
+        } else {
+            $('#allowed_extensions_row').hide();
+        }
     }
     
-    toggleDropdownValues();
-    $('select[name="field_type"]').on('change', toggleDropdownValues);
+    toggleFieldTypeOptions();
+    $('select[name="field_type"]').on('change', toggleFieldTypeOptions);
 });
 </script>

@@ -49,17 +49,24 @@ class ReservationView extends CommonGLPI {
 
     /**
      * Show reservations list
+     * @param bool $filterByCurrentUser If true, only show reservations of the logged in user
      */
-    public static function showReservationsList(): void {
+    public static function showReservationsList(bool $filterByCurrentUser = false): void {
         global $DB;
 
         $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
         $perPage = 15;
         $status = 'open';
+        
+        // Get userId to filter if needed
+        $userId = null;
+        if ($filterByCurrentUser) {
+            $userId = Session::getLoginUserID();
+        }
 
         $reservationRepository = new ReservationRepository($DB);
-        $reservations = $reservationRepository->getReservationsList($status, $page, $perPage);
-        $totalCount = $reservationRepository->getReservationsCount($status);
+        $reservations = $reservationRepository->getReservationsList($status, $page, $perPage, 'begin', 'ASC', '', $userId);
+        $totalCount = $reservationRepository->getReservationsCount($status, '', $userId);
         $totalPages = ceil($totalCount / $perPage);
 
         $columns = ['Item', 'Usuário', 'Início', 'Fim'];
@@ -83,7 +90,8 @@ class ReservationView extends CommonGLPI {
             'currentPage' => $page,
             'totalPages'  => $totalPages,
             'perPage'     => $perPage,
-            'totalCount'  => $totalCount
+            'totalCount'  => $totalCount,
+            'filterByUser' => $filterByCurrentUser
         ]);
     }
 }

@@ -216,7 +216,17 @@
         loadReservations(1, currentStatus);
     });
 
-    // Search handlers
+    // Search handlers - Dynamic search with debounce
+    let searchTimeout;
+    $("#searchInput").on("input", function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            searchQuery = $(this).val().trim();
+            currentPage = 1;
+            loadReservations(1, currentStatus);
+        }, 300);
+    });
+
     $("#searchBtn").on("click", function() {
         searchQuery = $("#searchInput").val().trim();
         currentPage = 1;
@@ -225,6 +235,7 @@
 
     $("#searchInput").on("keypress", function(e) {
         if (e.which === 13) {
+            clearTimeout(searchTimeout);
             searchQuery = $(this).val().trim();
             currentPage = 1;
             loadReservations(1, currentStatus);
@@ -274,13 +285,31 @@
                     rows += `</ul></td></tr>`;                 
                 }
 
-                // Display custom fields
+                // Display custom fields with image/document support
                 if (response.customFields && response.customFields.length > 0) {
                     response.customFields.forEach((field) => {
+                        let valueHtml = field.value;
+                        
+                        if (field.isDocument) {
+                            if (field.isImage) {
+                                // Display image thumbnail with link
+                                valueHtml = `
+                                    <a href="${field.documentUrl}" target="_blank">
+                                        <img src="${field.documentUrl}" alt="${field.value}" 
+                                             style="max-width: 200px; max-height: 150px; border-radius: 4px; cursor: pointer;" />
+                                    </a>
+                                    <br><small><a href="${field.documentUrl}" target="_blank">${field.value}</a></small>
+                                `;
+                            } else {
+                                // Display as download link
+                                valueHtml = `<a href="${field.documentUrl}" target="_blank"><i class="fas fa-file-download me-1"></i>${field.value}</a>`;
+                            }
+                        }
+                        
                         rows += `
                             <tr>
-                                <td>${field.label}</td>
-                                <td>${field.value}</td>
+                                <td class="align-text-top">${field.label}</td>
+                                <td>${valueHtml}</td>
                             </tr>`;
                     });
                 }

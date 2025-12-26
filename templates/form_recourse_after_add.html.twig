@@ -73,6 +73,25 @@
                                     {% endfor %}
                                 {% endif %}
                             </select>
+                        {% elseif field.field_type == 'file' %}
+                            <input type="file" 
+                                   class="form-control" 
+                                   name="customfield_file_{{ field.id }}" 
+                                   id="customfield_{{ field.id }}"
+                                   {% if field.allowed_extensions %}
+                                       accept=".{{ field.allowed_extensions|replace({',': ',.'}) }}"
+                                   {% endif %}
+                                   {{ field.is_mandatory ? 'required' : '' }} />
+                            {% if field.allowed_extensions %}
+                                <small class="text-muted">Tipos permitidos: {{ field.allowed_extensions }}</small>
+                            {% endif %}
+                        {% else %}
+                            {# Default fallback - render as text input #}
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="customfield_{{ field.id }}" 
+                                   id="customfield_{{ field.id }}"
+                                   {{ field.is_mandatory ? 'required' : '' }} />
                         {% endif %}
                     </td>
                 </tr>

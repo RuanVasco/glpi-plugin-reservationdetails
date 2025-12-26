@@ -64,8 +64,9 @@ class ReservationRepository {
 
     /**
      * Get reservations list by status (open or closed) with pagination, sorting and search
+     * If userId is provided, only returns reservations for that user
      */
-    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15, string $sortField = 'begin', string $sortDir = 'ASC', string $search = ''): array {
+    public function getReservationsList(string $status = 'open', int $page = 1, int $perPage = 15, string $sortField = 'begin', string $sortDir = 'ASC', string $search = '', ?int $userId = null): array {
         $now = date('Y-m-d H:i:s');
         $offset = ($page - 1) * $perPage;
         
@@ -115,6 +116,11 @@ class ReservationRepository {
         } else {
             $criteria['WHERE'] = ['glpi_reservations.end' => ['<=', $now]];
         }
+        
+        // Filter by user if userId is provided
+        if ($userId !== null) {
+            $criteria['WHERE']['glpi_reservations.users_id'] = $userId;
+        }
 
         $iterator = $this->db->request($criteria);
         $results = [];
@@ -154,12 +160,13 @@ class ReservationRepository {
 
     /**
      * Get total count of reservations by status and optional search
+     * If userId is provided, only counts reservations for that user
      */
-    public function getReservationsCount(string $status = 'open', string $search = ''): int {
+    public function getReservationsCount(string $status = 'open', string $search = '', ?int $userId = null): int {
         // If search is provided, we need to count differently since we filter in PHP
         if (!empty($search)) {
             // Get all matching records (without limit) and count
-            $allResults = $this->getReservationsList($status, 1, 9999, 'begin', 'ASC', $search);
+            $allResults = $this->getReservationsList($status, 1, 9999, 'begin', 'ASC', $search, $userId);
             return count($allResults);
         }
         
@@ -174,6 +181,11 @@ class ReservationRepository {
             $criteria['WHERE'] = ['end' => ['>', $now]];
         } else {
             $criteria['WHERE'] = ['end' => ['<=', $now]];
+        }
+        
+        // Filter by user if userId is provided
+        if ($userId !== null) {
+            $criteria['WHERE']['users_id'] = $userId;
         }
 
         $result = $this->db->request($criteria)->current();
@@ -245,9 +257,36 @@ class ReservationRepository {
         ]);
 
         foreach ($cfQuery as $cf) {
+            $value = $cf['value'];
+            $isDocument = false;
+            $documentUrl = '';
+            $isImage = false;
+            
+            // Check if value is a document reference
+            if (strpos($value, 'document:') === 0) {
+                $docId = (int)str_replace('document:', '', $value);
+                $document = new \Document();
+                if ($document->getFromDB($docId)) {
+                    $isDocument = true;
+                    // Build proper download URL
+                    global $CFG_GLPI;
+                    $documentUrl = $CFG_GLPI['root_doc'] . '/front/document.send.php?docid=' . $docId;
+                    $value = $document->fields['name'];
+                    
+                    // Check if it's an image
+                    $mime = $document->fields['mime'] ?? '';
+                    if (strpos($mime, 'image/') === 0) {
+                        $isImage = true;
+                    }
+                }
+            }
+            
             $customFieldValues[] = [
                 'label' => $cf['field_label'],
-                'value' => $cf['value']
+                'value' => $value,
+                'isDocument' => $isDocument,
+                'documentUrl' => $documentUrl,
+                'isImage' => $isImage
             ];
         }
 

@@ -108,13 +108,71 @@ if (isset($_POST['add'])) {
         }
     }
 
-    // Save custom field values
+    // Save custom field values (text-based fields)
     $customFieldValues = [];
     foreach ($_POST as $key => $value) {
-        if (strpos($key, 'customfield_') === 0) {
+        if (strpos($key, 'customfield_') === 0 && strpos($key, 'customfield_file_') !== 0) {
             $fieldId = (int) str_replace('customfield_', '', $key);
             if ($fieldId > 0 && !empty($value)) {
                 $customFieldValues[$fieldId] = $value;
+            }
+        }
+    }
+    
+    // Handle file uploads
+    if (!empty($_FILES)) {
+        foreach ($_FILES as $key => $fileData) {
+            if (strpos($key, 'customfield_file_') === 0 && !empty($fileData['name'])) {
+                $fieldId = (int) str_replace('customfield_file_', '', $key);
+                if ($fieldId > 0 && $fileData['error'] === UPLOAD_ERR_OK) {
+                    // Generate unique filename to avoid conflicts
+                    $uniquePrefix = uniqid() . '_';
+                    $safeFilename = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $fileData['name']);
+                    $targetFilename = $uniquePrefix . $safeFilename;
+                    $targetPath = GLPI_UPLOAD_DIR . '/' . $targetFilename;
+                    
+                    // Move uploaded file to GLPI temp directory
+                    if (move_uploaded_file($fileData['tmp_name'], $targetPath)) {
+                        // Create document using GLPI Document system
+                        $document = new \Document();
+                        
+                        $docData = [
+                            'entities_id' => $_SESSION['glpiactive_entity'],
+                            'name' => sprintf('Reserva #%d - %s', $reservationId, $fileData['name']),
+                            'documentcategories_id' => 0,
+                            'users_id' => Session::getLoginUserID(),
+                            'upload_file' => $targetFilename
+                        ];
+                        
+                        $docId = $document->add($docData);
+                        
+                        if ($docId) {
+                            // Store document ID as the field value
+                            $customFieldValues[$fieldId] = 'document:' . $docId;
+                            Session::addMessageAfterRedirect(
+                                sprintf(__('Arquivo "%s" enviado com sucesso.'), $fileData['name']),
+                                true,
+                                INFO
+                            );
+                        } else {
+                            Session::addMessageAfterRedirect(
+                                sprintf(__('Erro ao fazer upload do arquivo: %s'), $fileData['name']),
+                                false,
+                                ERROR
+                            );
+                            // Clean up failed upload
+                            if (file_exists($targetPath)) {
+                                unlink($targetPath);
+                            }
+                        }
+                    } else {
+                        Session::addMessageAfterRedirect(
+                            sprintf(__('Erro ao mover arquivo: %s'), $fileData['name']),
+                            false,
+                            ERROR
+                        );
+                    }
+                }
             }
         }
     }

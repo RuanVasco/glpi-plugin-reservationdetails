@@ -4,6 +4,7 @@ use GlpiPlugin\Reservationdetails\Entity\Reservation;
 use GlpiPlugin\Reservationdetails\Entity\Resource;
 use GlpiPlugin\Reservationdetails\Entity\Profile;
 use GlpiPlugin\Reservationdetails\Entity\ItemPermission;
+use GlpiPlugin\Reservationdetails\Entity\CustomField;
 
 function plugin_reservationdetails_install() {
     global $DB;
@@ -123,6 +124,17 @@ function plugin_reservationdetails_install() {
             // Copy field_label to name for existing records
             $DB->doQuery("UPDATE `glpi_plugin_reservationdetails_customfields` SET `name` = `field_label` WHERE `name` IS NULL");
         }
+
+        // Add 'file' to field_type ENUM and add allowed_extensions column
+        if (!$DB->fieldExists('glpi_plugin_reservationdetails_customfields', 'allowed_extensions')) {
+            // Modify ENUM to include 'file'
+            $DB->doQueryOrDie(
+                "ALTER TABLE `glpi_plugin_reservationdetails_customfields` 
+                 MODIFY COLUMN `field_type` ENUM('text', 'number', 'textarea', 'dropdown', 'file') DEFAULT 'text',
+                 ADD COLUMN `allowed_extensions` VARCHAR(255) DEFAULT NULL COMMENT 'Comma-separated list of allowed file extensions (e.g., jpg,png,pdf)'",
+                $DB->error()
+            );
+        }
     }
 
     $migration->executeMigration();
@@ -217,8 +229,23 @@ function plugin_reservationdetails_additem_called(CommonDBTM $item) {
         }
 
         if (!$found) {
-            // No resources selected - no redirect needed, just continue normally
-            // The reservation was already created, user can add resources later if needed
+            // No resources selected - check if there are custom fields for this item type
+            $reservationItemId = $item->input['reservationitems_id'] ?? 0;
+            if ($reservationItemId > 0 && !$isBulk) {
+                $resItem = new \ReservationItem();
+                if ($resItem->getFromDB($reservationItemId)) {
+                    $itemType = $resItem->fields['itemtype'];
+                    $customFields = CustomField::getFieldsForItemType($itemType);
+                    
+                    if (!empty($customFields)) {
+                        // Has custom fields - redirect to the form
+                        $obj = new Reservation();
+                        Html::redirect($obj->getFormURLWithID($item->getID()));
+                        return;
+                    }
+                }
+            }
+            // No custom fields either - just continue normally
             return;
         } else {
             $reservationId = $item->fields['id'];

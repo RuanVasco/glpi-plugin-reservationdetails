@@ -19,7 +19,9 @@ Plugin for GLPI that adds contextual fields to the asset reservation form, inclu
 
 ### Custom Fields
 - Create custom fields for reservations
-- Multiple field types: text, textarea, dropdown, checkbox, date
+- Multiple field types: text, number, textarea, dropdown, **file upload**
+- File uploads integrated with GLPI Document system
+- Configurable allowed file extensions per field
 - Fields are displayed in the reservation form
 
 ### Reservation Permissions by Item

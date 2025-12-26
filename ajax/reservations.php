@@ -18,7 +18,13 @@ if (!$plugin->isInstalled('reservationdetails') || !$plugin->isActivated('reserv
 
 Session::checkLoginUser();
 
-if (!Session::haveRight(Reservation::$rightname, READ)) {
+// Check if user has full READ right or is accessing their own data
+$hasFullAccess = Session::haveRight(Reservation::$rightname, READ);
+$hasUpdateRight = Session::haveRight(Reservation::$rightname, UPDATE);
+$currentUserId = Session::getLoginUserID();
+
+// Users must either have full access OR be logged in to see their own data
+if (!$hasFullAccess && !$currentUserId) {
     echo json_encode(['error' => 'Access denied']);
     exit;
 }
@@ -37,9 +43,15 @@ if (isset($_GET['byList'])) {
     $sortDir = isset($_GET['sortDir']) ? $_GET['sortDir'] : 'ASC';
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     
-    $reservations = $reservationRepository->getReservationsList($status, $page, $perPage, $sortField, $sortDir, $search);
-    $totalCount = $reservationRepository->getReservationsCount($status, $search);
-    $totalPages = ceil($totalCount / $perPage);
+    // Apply RLS: Users without UPDATE right see only their own reservations
+    $userId = null;
+    if (!$hasUpdateRight) {
+        $userId = $currentUserId;
+    }
+    
+    $reservations = $reservationRepository->getReservationsList($status, $page, $perPage, $sortField, $sortDir, $search, $userId);
+    $totalCount = $reservationRepository->getReservationsCount($status, $search, $userId);
+    $totalPages = max(1, ceil($totalCount / $perPage));
     
     $result = [];
     foreach ($reservations as $res) {
@@ -69,6 +81,17 @@ if (isset($_GET['id'])) {
     $details = $reservationRepository->getReservationDetails($reservationId);
     
     if ($details) {
+        // If user doesn't have full access, check if the reservation belongs to them
+        if (!$hasFullAccess) {
+            // Get reservation owner
+            $reservation = new \Reservation();
+            if ($reservation->getFromDB($reservationId)) {
+                if ($reservation->fields['users_id'] != $currentUserId) {
+                    echo json_encode(['error' => 'Access denied']);
+                    exit;
+                }
+            }
+        }
         echo json_encode($details);
     } else {
         echo json_encode(['error' => 'Reservation not found']);
